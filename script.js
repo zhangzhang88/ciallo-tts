@@ -84,6 +84,11 @@ $(document).ready(function() {
                 showError('请稍候再试，每3秒只能请求一次。');
             }
         });
+
+        $('#text').on('input', function() {
+            const currentLength = $(this).val().length;
+            $('#charCount').text(`最多3600个字符，目前已输入${currentLength}个字符`);
+        });
     });
 });
 
