@@ -103,11 +103,20 @@ function canMakeRequest() {
     return false;
 }
 
-function generateVoice(isPreview) {
+function generateVoice(isPreview = false) {
+    const text = $('#text').val().trim();
     const apiName = $('#api').val();
+    const cacheKey = `${apiConfig[apiName].url}_${text}`;
+    
+    if (cachedAudio.has(cacheKey)) {
+        showWarning('该文本已经生成过语音，将直接使用缓存版本');
+        const cachedUrl = cachedAudio.get(cacheKey);
+        updateAudioPlayer(cachedUrl);
+        return;
+    }
+
     const apiUrl = API_CONFIG[apiName].url;
     const speaker = $('#speaker').val();
-    const text = $('#text').val().trim();
     const maxLength = 3600;
     
     if (!text) {
@@ -283,4 +292,24 @@ function initializeAudioPlayer() {
     audio.style.borderRadius = '12px';
     audio.style.width = '100%';
     audio.style.marginTop = '20px';
+}
+
+function showWarning(message) {
+    const warningDiv = $('<div>')
+        .addClass('alert alert-warning alert-dismissible fade show')
+        .html(`
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+            <i class="fas fa-exclamation-triangle"></i> ${message}
+        `)
+        .insertBefore('#generateButton');
+    
+    setTimeout(() => {
+        warningDiv.alert('close');
+    }, 3000);
+}
+
+function updateAudioPlayer(audioUrl) {
+    $('#audio').attr('src', audioUrl);
+    $('#result').show();
+    $('#download').attr('href', audioUrl);
 }
