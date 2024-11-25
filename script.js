@@ -49,6 +49,8 @@ function updateSliderLabel(sliderId, labelId) {
 
 $(document).ready(function() {
     loadSpeakers().then(() => {
+        $('#apiTips').text('使用 Workers API，每天限制 100000 次请求');
+
         $('[data-toggle="tooltip"]').tooltip();
 
         $('#api').on('change', function() {
