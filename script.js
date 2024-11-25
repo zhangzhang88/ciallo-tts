@@ -104,26 +104,10 @@ function canMakeRequest() {
 }
 
 function generateVoice(isPreview) {
-    const text = $('#text').val().trim();
     const apiName = $('#api').val();
-    const speaker = $('#speaker').val();
-    const rate = $('#rate').val();
-    const pitch = $('#pitch').val();
-    
-    const cacheKey = `${apiConfig[apiName].url}_${text}`;
-    if (cachedAudio.has(cacheKey)) {
-        showMessage('该文本已经生成过语音，将直接使用缓存版本。', 'info');
-        const cachedUrl = cachedAudio.get(cacheKey);
-        updateAudioPlayer(cachedUrl);
-        return;
-    }
-    
-    if (!canMakeRequest()) {
-        showMessage('请稍候再试，每3秒只能请求一次。', 'warning');
-        return;
-    }
-    
     const apiUrl = API_CONFIG[apiName].url;
+    const speaker = $('#speaker').val();
+    const text = $('#text').val().trim();
     const maxLength = 3600;
     
     if (!text) {
@@ -174,7 +158,12 @@ const cachedAudio = new Map();
 function makeRequest(url, isPreview, text, isDenoApi) {
     const cacheKey = `${url}_${text}`;
     if (cachedAudio.has(cacheKey)) {
-        return Promise.resolve(cachedAudio.get(cacheKey));
+        const cachedUrl = cachedAudio.get(cacheKey);
+        $('#result').show();
+        $('#audio').attr('src', cachedUrl);
+        $('#download').attr('href', cachedUrl);
+        showMessage('该文本已经生成过语音了哦~', 'info');
+        return Promise.resolve(cachedUrl);
     }
     $('#loading').show();
     $('#error').hide();
@@ -310,10 +299,4 @@ function showMessage(message, type = 'error') {
     setTimeout(() => {
         errorDiv.fadeOut();
     }, 3000);
-}
-
-function updateAudioPlayer(audioUrl) {
-    $('#result').show();
-    $('#audio').attr('src', audioUrl);
-    $('#download').attr('href', audioUrl);
 }
