@@ -103,20 +103,27 @@ function canMakeRequest() {
     return false;
 }
 
-function generateVoice(isPreview = false) {
+function generateVoice(isPreview) {
     const text = $('#text').val().trim();
     const apiName = $('#api').val();
-    const cacheKey = `${apiConfig[apiName].url}_${text}`;
+    const speaker = $('#speaker').val();
+    const rate = $('#rate').val();
+    const pitch = $('#pitch').val();
     
+    const cacheKey = `${apiConfig[apiName].url}_${text}`;
     if (cachedAudio.has(cacheKey)) {
-        showWarning('该文本已经生成过语音，将直接使用缓存版本');
+        showMessage('该文本已经生成过语音，将直接使用缓存版本。', 'info');
         const cachedUrl = cachedAudio.get(cacheKey);
         updateAudioPlayer(cachedUrl);
         return;
     }
-
+    
+    if (!canMakeRequest()) {
+        showMessage('请稍候再试，每3秒只能请求一次。', 'warning');
+        return;
+    }
+    
     const apiUrl = API_CONFIG[apiName].url;
-    const speaker = $('#speaker').val();
     const maxLength = 3600;
     
     if (!text) {
@@ -228,8 +235,7 @@ function makeRequest(url, isPreview, text, isDenoApi) {
 }
 
 function showError(message) {
-    const errorDiv = $('#error');
-    errorDiv.text(message).show();
+    showMessage(message, 'danger');
 }
 
 function addHistoryItem(timestamp, text, audioURL) {
@@ -294,22 +300,20 @@ function initializeAudioPlayer() {
     audio.style.marginTop = '20px';
 }
 
-function showWarning(message) {
-    const warningDiv = $('<div>')
-        .addClass('alert alert-warning alert-dismissible fade show')
-        .html(`
-            <button type="button" class="close" data-dismiss="alert">&times;</button>
-            <i class="fas fa-exclamation-triangle"></i> ${message}
-        `)
-        .insertBefore('#generateButton');
+function showMessage(message, type = 'error') {
+    const errorDiv = $('#error');
+    errorDiv.removeClass('alert-danger alert-warning alert-info')
+           .addClass(`alert-${type}`)
+           .text(message)
+           .show();
     
     setTimeout(() => {
-        warningDiv.alert('close');
+        errorDiv.fadeOut();
     }, 3000);
 }
 
 function updateAudioPlayer(audioUrl) {
-    $('#audio').attr('src', audioUrl);
     $('#result').show();
+    $('#audio').attr('src', audioUrl);
     $('#download').attr('href', audioUrl);
 }
