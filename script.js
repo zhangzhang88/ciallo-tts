@@ -162,6 +162,8 @@ function makeRequest(url, isPreview, text, isDenoApi) {
         $('#result').show();
         $('#audio').attr('src', cachedUrl);
         $('#download').attr('href', cachedUrl);
+        
+        highlightHistoryItem(cachedUrl);
         showMessage('该文本已经生成过语音了哦~', 'info');
         return Promise.resolve(cachedUrl);
     }
@@ -242,10 +244,10 @@ function addHistoryItem(timestamp, text, audioURL) {
                 <span class="text-truncate" style="max-width: 60%;">${timestamp} - ${text}</span>
                 <div class="btn-group">
                     <button class="btn btn-sm btn-outline-primary" onclick="playAudio('${audioURL}')">
-                        <i class="fas fa-play"></i> 播放
+                        播放
                     </button>
                     <button class="btn btn-sm btn-outline-success" onclick="downloadAudio('${audioURL}')">
-                        <i class="fas fa-download"></i> 下载
+                        下载
                     </button>
                 </div>
             </div>
@@ -299,4 +301,21 @@ function showMessage(message, type = 'error') {
     setTimeout(() => {
         errorDiv.fadeOut();
     }, 3000);
+}
+
+function highlightHistoryItem(audioURL) {
+    $('.history-item').removeClass('highlight-history');
+    
+    const historyItem = $('#historyItems .history-item').filter(function() {
+        return $(this).find('button').first().attr('onclick').includes(audioURL);
+    });
+    
+    if (historyItem.length) {
+        historyItem.addClass('highlight-history');
+        historyItem[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        setTimeout(() => {
+            historyItem.removeClass('highlight-history');
+        }, 3000);
+    }
 }
