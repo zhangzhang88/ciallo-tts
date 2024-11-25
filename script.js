@@ -156,6 +156,13 @@ function generateVoice(isPreview) {
 const cachedAudio = new Map();
 
 function makeRequest(url, isPreview, text, isDenoApi) {
+    try {
+        new URL(url);
+    } catch (e) {
+        showError('无效的请求地址');
+        return Promise.reject(e);
+    }
+    
     const cacheKey = `${url}_${text}`;
     if (cachedAudio.has(cacheKey)) {
         const cachedUrl = cachedAudio.get(cacheKey);
@@ -180,7 +187,7 @@ function makeRequest(url, isPreview, text, isDenoApi) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-    fetch(url, { 
+    return fetch(url, { 
         signal: controller.signal,
         headers: {
             'Accept': 'audio/mpeg'
@@ -189,7 +196,10 @@ function makeRequest(url, isPreview, text, isDenoApi) {
     .then(response => {
         clearTimeout(timeoutId);
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            throw new Error(`服务器响应错误: ${response.status}`);
+        }
+        if (!response.headers.get('content-type')?.includes('audio/')) {
+            throw new Error('响应类型错误');
         }
         return response.blob();
     })
@@ -230,11 +240,20 @@ function showError(message) {
 }
 
 function addHistoryItem(timestamp, text, audioURL) {
-    const MAX_HISTORY = 10;
+    const MAX_HISTORY = 50;
     const historyItems = $('#historyItems');
+    
     if (historyItems.children().length >= MAX_HISTORY) {
         const oldestItem = historyItems.children().last();
         const oldUrl = oldestItem.find('button').first().attr('onclick').match(/'([^']+)'/)[1];
+        
+        for (let [key, value] of cachedAudio.entries()) {
+            if (value === oldUrl) {
+                cachedAudio.delete(key);
+                break;
+            }
+        }
+        
         URL.revokeObjectURL(oldUrl);
         oldestItem.remove();
     }
@@ -260,9 +279,15 @@ function addHistoryItem(timestamp, text, audioURL) {
 
 function playAudio(audioURL) {
     const audioElement = $('#audio')[0];
+    audioElement.onerror = function() {
+        showError('音频播放失败，请重试');
+    };
     audioElement.src = audioURL;
     audioElement.load();
-    audioElement.play();
+    audioElement.play().catch(error => {
+        console.error('播放失败:', error);
+        showError('音频播放失败，请重试');
+    });
 }
 
 function downloadAudio(audioURL) {
@@ -277,6 +302,12 @@ function downloadAudio(audioURL) {
 function clearHistory() {
     $('#historyItems .history-item').each(function() {
         const audioURL = $(this).find('button').first().attr('onclick').match(/'([^']+)'/)[1];
+        
+        for (let [key, value] of cachedAudio.entries()) {
+            if (value === audioURL) {
+                cachedAudio.delete(key);
+            }
+        }
         URL.revokeObjectURL(audioURL);
     });
     
