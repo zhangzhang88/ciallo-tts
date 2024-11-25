@@ -303,19 +303,51 @@ function showMessage(message, type = 'error') {
     }, 3000);
 }
 
+// 全局变量用于存储当前高亮的定时器
+let currentHighlightTimer;
+
 function highlightHistoryItem(audioURL) {
+    // 清除当前正在进行的高亮和定时器
+    if (currentHighlightTimer) {
+        clearTimeout(currentHighlightTimer);
+    }
     $('.history-item').removeClass('highlight-history');
     
+    // 找到匹配的历史记录
     const historyItem = $('#historyItems .history-item').filter(function() {
-        return $(this).find('button').first().attr('onclick').includes(audioURL);
+        const onclickAttr = $(this).find('button').first().attr('onclick');
+        return onclickAttr && onclickAttr.includes(audioURL);
     });
     
     if (historyItem.length) {
-        historyItem.addClass('highlight-history');
-        historyItem[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
-        
-        setTimeout(() => {
+        try {
+            // 强制重新触发动画
+            void historyItem[0].offsetHeight;
+            
+            // 添加高亮类
+            historyItem.addClass('highlight-history');
+            
+            // 滚动到高亮项（添加错误处理）
+            try {
+                historyItem[0].scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'center'
+                });
+            } catch (scrollError) {
+                console.warn('Smooth scroll failed, falling back to default:', scrollError);
+                historyItem[0].scrollIntoView();
+            }
+            
+            // 设置新的定时器并保存引用
+            currentHighlightTimer = setTimeout(() => {
+                historyItem.removeClass('highlight-history');
+                currentHighlightTimer = null;
+            }, 3000);
+            
+        } catch (error) {
+            console.error('Highlight animation failed:', error);
+            // 确保在出错时移除高亮状态
             historyItem.removeClass('highlight-history');
-        }, 3000);
+        }
     }
 }
