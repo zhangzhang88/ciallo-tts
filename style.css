@@ -210,3 +210,39 @@ footer a:hover {
         transform: scale(1);
     }
 }
+
+/* 添加按钮点击反馈效果 */
+.btn:active {
+    transform: scale(0.98);
+}
+
+/* 优化表单控件悬停状态 */
+.form-control:hover {
+    border-color: rgba(74, 144, 226, 0.3);
+}
+
+/* 添加加载动画过渡效果 */
+#loading {
+    transition: opacity 0.3s ease;
+    opacity: 0;
+}
+
+#loading.show {
+    opacity: 1;
+}
+
+/* 优化音频控件样式 */
+#audio::-webkit-media-controls-panel {
+    background: linear-gradient(145deg, #ffffff 0%, #e6f0f8 100%);
+}
+
+/* 添加表单元素焦点动画 */
+.form-control:focus {
+    animation: focusAnimation 0.3s ease;
+}
+
+@keyframes focusAnimation {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
