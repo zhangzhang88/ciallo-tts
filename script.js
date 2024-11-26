@@ -107,30 +107,136 @@ function canMakeRequest() {
 }
 
 function generateVoice(isPreview) {
+    const apiName = $('#api').val();
+    const apiUrl = API_CONFIG[apiName].url;
+    const speaker = $('#speaker').val();
     const text = $('#text').val().trim();
+    const maxLength = 3600;
+    
     if (!text) {
         showError('请输入要转换的文本');
         return;
     }
     
-    const apiName = $('#api').val();
-    const apiUrl = API_CONFIG[apiName].url;
-    const requestText = isPreview ? text.substring(0, 20) : text;
-    
-    makeRequest(apiUrl, isPreview, requestText, apiName === 'deno-api');
+    if (text.length > maxLength) {
+        showError(`文本长度不能超过${maxLength}个字符`);
+        return;
+    }
+
+    const previewText = isPreview ? text.substring(0, 20) : text;
+    let rate = $('#rate').val();
+    let pitch = $('#pitch').val();
+
+    if (apiName === 'deno-api') {
+        const rateConverted = (parseFloat(rate) / 100).toFixed(2);
+        const pitchConverted = (parseFloat(pitch) / 100).toFixed(2);
+        
+        const params = new URLSearchParams({
+            text: previewText,
+            voice: speaker,
+            rate: rateConverted,
+            pitch: pitchConverted
+        });
+        
+        if (!isPreview) {
+            params.append('download', 'true');
+        }
+        
+        const url = `${apiUrl}?${params.toString()}`;
+        
+        makeRequest(url, isPreview, text, true);
+    } else {
+        let url = `${apiUrl}?t=${encodeURIComponent(previewText)}&v=${encodeURIComponent(speaker)}`;
+        url += `&r=${encodeURIComponent(rate)}&p=${encodeURIComponent(pitch)}`;
+        if (!isPreview) {
+            url += '&d=true';
+        }
+        
+        makeRequest(url, isPreview, text, false);
+    }
 }
 
 const cachedAudio = new Map();
 
-const originalMakeRequest = makeRequest;
-makeRequest = async function(url, isPreview, text, isDenoApi) {
-    $('#loading').addClass('show').css('display', 'block');
+function makeRequest(url, isPreview, text, isDenoApi) {
     try {
-        return await originalMakeRequest(url, isPreview, text, isDenoApi);
-    } finally {
-        $('#loading').removeClass('show').fadeOut(300);
+        new URL(url);
+    } catch (e) {
+        showError('无效的请求地址');
+        return Promise.reject(e);
     }
-};
+    
+    const cacheKey = `${url}_${text}`;
+    if (cachedAudio.has(cacheKey)) {
+        const cachedUrl = cachedAudio.get(cacheKey);
+        $('#result').show();
+        $('#audio').attr('src', cachedUrl);
+        $('#download').attr('href', cachedUrl);
+        
+        highlightHistoryItem(cachedUrl);
+        showMessage('该文本已经生成过语音了哦~', 'info');
+        return Promise.resolve(cachedUrl);
+    }
+    $('#loading').show();
+    $('#error').hide();
+    $('#result').hide();
+    $('#generateButton').prop('disabled', true);
+    $('#previewButton').prop('disabled', true);
+
+    if (currentAudioURL) {
+        URL.revokeObjectURL(currentAudioURL);
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+    return fetch(url, { 
+        signal: controller.signal,
+        headers: {
+            'Accept': 'audio/mpeg'
+        }
+    })
+    .then(response => {
+        clearTimeout(timeoutId);
+        if (!response.ok) {
+            throw new Error(`服务器响应错误: ${response.status}`);
+        }
+        if (!response.headers.get('content-type')?.includes('audio/')) {
+            throw new Error('响应类型错误');
+        }
+        return response.blob();
+    })
+    .then(blob => {
+        if (!blob.type.includes('audio/')) {
+            throw new Error('返回的不是音频文件');
+        }
+        
+        currentAudioURL = URL.createObjectURL(blob);
+        $('#result').show();
+        $('#audio').attr('src', currentAudioURL);
+        $('#download').attr('href', currentAudioURL);
+        cachedAudio.set(cacheKey, currentAudioURL);
+
+        if (!isPreview) {
+            const timestamp = new Date().toLocaleTimeString();
+            const shortenedText = text.length > 5 ? text.substring(0, 5) + '...' : text;
+            addHistoryItem(timestamp, shortenedText, currentAudioURL);
+        }
+    })
+    .catch(error => {
+        console.error('请求错误:', error);
+        if (error.name === 'AbortError') {
+            showError('请求超时，请重试');
+        } else {
+            showError(`生成失败：${isDenoApi ? 'Deno API 服务暂时不可用，请尝试使用 Workers API' : error.message}`);
+        }
+    })
+    .finally(() => {
+        $('#loading').hide();
+        $('#generateButton').prop('disabled', false);
+        $('#previewButton').prop('disabled', false);
+    });
+}
 
 function showError(message) {
     showMessage(message, 'danger');
@@ -282,7 +388,7 @@ function highlightHistoryItem(audioURL) {
 
 // 优化表单响应
 function enhanceFormInteraction() {
-    const $form = $('#text2voice-form');
+    const $form = $('#tts-core-form');
     
     // 防止表单默认提交行为
     $form.on('submit', function(e) {
@@ -302,6 +408,25 @@ function enhanceFormInteraction() {
                 .toggleClass('text-danger', currentLength > 3500);
         }, 200);
     });
+
+    // 优化加载状态显示
+    function showLoading() {
+        $('#loading').addClass('show').css('display', 'block');
+    }
+
+    function hideLoading() {
+        $('#loading').removeClass('show').fadeOut(300);
+    }
+
+    // 替换原有的显示/隐藏代码
+    makeRequest = function(url, isPreview, text, isDenoApi) {
+        showLoading();
+        // ... existing code ...
+        .finally(() => {
+            hideLoading();
+            // ... existing code ...
+        });
+    }
 }
 
 // 优化音频播放体验
@@ -318,79 +443,5 @@ function enhanceAudioPlayback() {
 
     audio.addEventListener('ended', () => {
         $('.history-item').removeClass('playing');
-    });
-}
-
-function makeRequest(apiUrl, isPreview, text, isDenoApi) {
-    if (!canMakeRequest()) {
-        showError('请等待3秒后再试');
-        return;
-    }
-
-    const speaker = $('#speaker').val();
-    const rate = parseInt($('#rate').val());
-    const pitch = parseInt($('#pitch').val());
-
-    // 显示加载状态
-    $('#loading').show();
-    $('#error').hide();
-    
-    // 如果是预览，禁用预览按钮
-    if (isPreview) {
-        $('#previewButton').prop('disabled', true);
-    } else {
-        $('#generateButton').prop('disabled', true);
-    }
-
-    // 准备请求数据
-    const requestData = {
-        text: text,
-        speaker: speaker,
-        rate: rate,
-        pitch: pitch
-    };
-
-    // 发送请求
-    $.ajax({
-        url: apiUrl,
-        method: 'POST',
-        data: JSON.stringify(requestData),
-        contentType: 'application/json',
-        success: function(response) {
-            if (response && response.audio) {
-                const audioUrl = response.audio;
-                
-                // 更新音频播放器
-                const audio = $('#audio')[0];
-                audio.src = audioUrl;
-                
-                // 显示结果区域
-                $('#result').show();
-                
-                // 如果不是预览，添加到历史记录
-                if (!isPreview) {
-                    addToHistory(text, speaker, rate, pitch, audioUrl);
-                }
-                
-                // 自动播放
-                audio.play();
-            } else {
-                showError('生成失败，请重试');
-            }
-        },
-        error: function(jqXHR, textStatus, errorThrown) {
-            showError(`生成失败：${textStatus} - ${errorThrown}`);
-        },
-        complete: function() {
-            // 隐藏加载状态
-            $('#loading').hide();
-            
-            // 恢复按钮状态
-            if (isPreview) {
-                $('#previewButton').prop('disabled', false);
-            } else {
-                $('#generateButton').prop('disabled', false);
-            }
-        }
     });
 }
