@@ -107,53 +107,27 @@ function canMakeRequest() {
 }
 
 function generateVoice(isPreview) {
-    const apiName = $('#api').val();
-    const apiUrl = API_CONFIG[apiName].url;
-    const speaker = $('#speaker').val();
     const text = $('#text').val().trim();
-    const maxLength = 3600;
-    
     if (!text) {
         showError('请输入要转换的文本');
         return;
     }
     
-    if (text.length > maxLength) {
-        showError(`文本长度不能超过${maxLength}个字符`);
+    const apiName = $('#api').val();
+    const speaker = $('#speaker').val();
+    
+    if (!speaker) {
+        showError('请选择讲述人');
         return;
     }
-
-    const previewText = isPreview ? text.substring(0, 20) : text;
-    let rate = $('#rate').val();
-    let pitch = $('#pitch').val();
-
-    if (apiName === 'deno-api') {
-        const rateConverted = (parseFloat(rate) / 100).toFixed(2);
-        const pitchConverted = (parseFloat(pitch) / 100).toFixed(2);
-        
-        const params = new URLSearchParams({
-            text: previewText,
-            voice: speaker,
-            rate: rateConverted,
-            pitch: pitchConverted
-        });
-        
-        if (!isPreview) {
-            params.append('download', 'true');
-        }
-        
-        const url = `${apiUrl}?${params.toString()}`;
-        
-        makeRequest(url, isPreview, text, true);
-    } else {
-        let url = `${apiUrl}?t=${encodeURIComponent(previewText)}&v=${encodeURIComponent(speaker)}`;
-        url += `&r=${encodeURIComponent(rate)}&p=${encodeURIComponent(pitch)}`;
-        if (!isPreview) {
-            url += '&d=true';
-        }
-        
-        makeRequest(url, isPreview, text, false);
-    }
+    
+    const rate = parseInt($('#rate').val());
+    const pitch = parseInt($('#pitch').val());
+    
+    const apiUrl = API_CONFIG[apiName].url;
+    const requestText = isPreview ? text.substring(0, 20) : text;
+    
+    makeRequest(apiUrl, isPreview, requestText, apiName === 'deno-api');
 }
 
 const cachedAudio = new Map();
