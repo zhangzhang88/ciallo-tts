@@ -91,9 +91,6 @@ $(document).ready(function() {
             const currentLength = $(this).val().length;
             $('#charCount').text(`最多3600个字符，目前已输入${currentLength}个字符`);
         });
-
-        enhanceFormInteraction();
-        enhanceAudioPlayback();
     });
 });
 
@@ -384,64 +381,4 @@ function highlightHistoryItem(audioURL) {
             historyItem.removeClass('highlight-history');
         }
     }
-}
-
-// 优化表单响应
-function enhanceFormInteraction() {
-    const $form = $('#tts-core-form');
-    
-    // 防止表单默认提交行为
-    $form.on('submit', function(e) {
-        e.preventDefault();
-    });
-    
-    // 添加输入防抖
-    let inputTimeout;
-    $form.find('#text').on('input', function() {
-        clearTimeout(inputTimeout);
-        const $this = $(this);
-        
-        inputTimeout = setTimeout(() => {
-            const currentLength = $this.val().length;
-            $('#charCount')
-                .text(`最多3600个字符，目前已输入${currentLength}个字符`)
-                .toggleClass('text-danger', currentLength > 3500);
-        }, 200);
-    });
-
-    // 优化加载状态显示
-    function showLoading() {
-        $('#loading').addClass('show').css('display', 'block');
-    }
-
-    function hideLoading() {
-        $('#loading').removeClass('show').fadeOut(300);
-    }
-
-    // 替换原有的显示/隐藏代码
-    makeRequest = function(url, isPreview, text, isDenoApi) {
-        showLoading();
-        // ... existing code ...
-        .finally(() => {
-            hideLoading();
-            // ... existing code ...
-        });
-    }
-}
-
-// 优化音频播放体验
-function enhanceAudioPlayback() {
-    const audio = $('#audio')[0];
-    
-    audio.addEventListener('play', () => {
-        $('.history-item').removeClass('playing');
-        const currentUrl = audio.src;
-        $(`.history-item button[onclick*="${currentUrl}"]`)
-            .closest('.history-item')
-            .addClass('playing');
-    });
-
-    audio.addEventListener('ended', () => {
-        $('.history-item').removeClass('playing');
-    });
 }
