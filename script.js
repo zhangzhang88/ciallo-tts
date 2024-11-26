@@ -114,16 +114,6 @@ function generateVoice(isPreview) {
     }
     
     const apiName = $('#api').val();
-    const speaker = $('#speaker').val();
-    
-    if (!speaker) {
-        showError('请选择讲述人');
-        return;
-    }
-    
-    const rate = parseInt($('#rate').val());
-    const pitch = parseInt($('#pitch').val());
-    
     const apiUrl = API_CONFIG[apiName].url;
     const requestText = isPreview ? text.substring(0, 20) : text;
     
@@ -328,5 +318,79 @@ function enhanceAudioPlayback() {
 
     audio.addEventListener('ended', () => {
         $('.history-item').removeClass('playing');
+    });
+}
+
+function makeRequest(apiUrl, isPreview, text, isDenoApi) {
+    if (!canMakeRequest()) {
+        showError('请等待3秒后再试');
+        return;
+    }
+
+    const speaker = $('#speaker').val();
+    const rate = parseInt($('#rate').val());
+    const pitch = parseInt($('#pitch').val());
+
+    // 显示加载状态
+    $('#loading').show();
+    $('#error').hide();
+    
+    // 如果是预览，禁用预览按钮
+    if (isPreview) {
+        $('#previewButton').prop('disabled', true);
+    } else {
+        $('#generateButton').prop('disabled', true);
+    }
+
+    // 准备请求数据
+    const requestData = {
+        text: text,
+        speaker: speaker,
+        rate: rate,
+        pitch: pitch
+    };
+
+    // 发送请求
+    $.ajax({
+        url: apiUrl,
+        method: 'POST',
+        data: JSON.stringify(requestData),
+        contentType: 'application/json',
+        success: function(response) {
+            if (response && response.audio) {
+                const audioUrl = response.audio;
+                
+                // 更新音频播放器
+                const audio = $('#audio')[0];
+                audio.src = audioUrl;
+                
+                // 显示结果区域
+                $('#result').show();
+                
+                // 如果不是预览，添加到历史记录
+                if (!isPreview) {
+                    addToHistory(text, speaker, rate, pitch, audioUrl);
+                }
+                
+                // 自动播放
+                audio.play();
+            } else {
+                showError('生成失败，请重试');
+            }
+        },
+        error: function(jqXHR, textStatus, errorThrown) {
+            showError(`生成失败：${textStatus} - ${errorThrown}`);
+        },
+        complete: function() {
+            // 隐藏加载状态
+            $('#loading').hide();
+            
+            // 恢复按钮状态
+            if (isPreview) {
+                $('#previewButton').prop('disabled', false);
+            } else {
+                $('#generateButton').prop('disabled', false);
+            }
+        }
     });
 }
