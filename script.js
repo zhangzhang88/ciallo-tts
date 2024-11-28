@@ -205,7 +205,7 @@ function makeRequest(url, isPreview, text, isDenoApi) {
         if (!isPreview) {
             const timestamp = new Date().toLocaleTimeString();
             const shortenedText = text.length > 5 ? text.substring(0, 5) + '...' : text;
-            addHistoryItem(timestamp, shortenedText, currentAudioURL);
+            addHistoryItem(timestamp, shortenedText, blob);
         }
     })
     .catch(error => {
@@ -227,24 +227,17 @@ function showError(message) {
     showMessage(message, 'danger');
 }
 
-function addHistoryItem(timestamp, text, audioURL) {
+function addHistoryItem(timestamp, text, audioBlob) {
     const MAX_HISTORY = 50;
     const historyItems = $('#historyItems');
     
     if (historyItems.children().length >= MAX_HISTORY) {
         const oldestItem = historyItems.children().last();
-        const oldUrl = oldestItem.find('button').first().attr('onclick').match(/'([^']+)'/)[1];
-        
-        for (let [key, value] of cachedAudio.entries()) {
-            if (value === oldUrl) {
-                cachedAudio.delete(key);
-                break;
-            }
-        }
-        
-        URL.revokeObjectURL(oldUrl);
         oldestItem.remove();
     }
+
+    const audioURL = URL.createObjectURL(audioBlob);
+    
     const historyItem = $(`
         <div class="history-item list-group-item" style="opacity: 0;">
             <div class="d-flex justify-content-between align-items-center">
@@ -260,6 +253,10 @@ function addHistoryItem(timestamp, text, audioURL) {
             </div>
         </div>
     `);
+    
+    historyItem.on('remove', () => {
+        URL.revokeObjectURL(audioURL);
+    });
     
     $('#historyItems').prepend(historyItem);
     setTimeout(() => historyItem.animate({ opacity: 1 }, 300), 50);
@@ -289,14 +286,7 @@ function downloadAudio(audioURL) {
 
 function clearHistory() {
     $('#historyItems .history-item').each(function() {
-        const audioURL = $(this).find('button').first().attr('onclick').match(/'([^']+)'/)[1];
-        
-        for (let [key, value] of cachedAudio.entries()) {
-            if (value === audioURL) {
-                cachedAudio.delete(key);
-            }
-        }
-        URL.revokeObjectURL(audioURL);
+        $(this).remove();
     });
     
     $('#historyItems').empty();
