@@ -204,8 +204,9 @@ function makeRequest(url, isPreview, text, isDenoApi) {
 
         if (!isPreview) {
             const timestamp = new Date().toLocaleTimeString();
+            const speaker = $('#speaker option:selected').text();
             const shortenedText = text.length > 5 ? text.substring(0, 5) + '...' : text;
-            addHistoryItem(timestamp, shortenedText, blob);
+            addHistoryItem(timestamp, speaker, shortenedText, blob);
         }
     })
     .catch(error => {
@@ -227,7 +228,7 @@ function showError(message) {
     showMessage(message, 'danger');
 }
 
-function addHistoryItem(timestamp, text, audioBlob) {
+function addHistoryItem(timestamp, speaker, text, audioBlob) {
     const MAX_HISTORY = 50;
     const historyItems = $('#historyItems');
     
@@ -241,7 +242,7 @@ function addHistoryItem(timestamp, text, audioBlob) {
     const historyItem = $(`
         <div class="history-item list-group-item" style="opacity: 0;">
             <div class="d-flex justify-content-between align-items-center">
-                <span class="text-truncate" style="max-width: 60%;">${timestamp} - ${text}</span>
+                <span class="text-truncate" style="max-width: 60%;">${timestamp} -（${speaker}）- ${text}</span>
                 <div class="btn-group">
                     <button class="btn btn-sm btn-outline-primary" onclick="playAudio('${audioURL}')">
                         播放
