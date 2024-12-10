@@ -387,7 +387,7 @@ function splitText(text, maxLength = 2500) {
         const searchEnd = Math.min(maxLength + 200, remainingText.length);
         
         // 1. 优先寻找段落结束符（包括中英文标点）
-        const paragraphMatch = remainingText.slice(searchStart, searchEnd).match(/[��！？!?.]\n|\n|。|！|？|!|\?|\./);
+        const paragraphMatch = remainingText.slice(searchStart, searchEnd).match(/[！？!?.]\n|\n|。|！|？|!|\?|\./);
         if (paragraphMatch) {
             splitIndex = searchStart + paragraphMatch.index + 1;
         }
@@ -444,21 +444,26 @@ async function generateVoiceForLongText(segments) {
         </div>
     `);
 
+    let hasSuccessfulSegment = false;
+
     for (let i = 0; i < segments.length; i++) {
         try {
             const progress = ((i + 1) / totalSegments * 100).toFixed(1);
             $('#loading .progress-bar').css('width', `${progress}%`);
             $('#loading .mt-2').text(`正在生成第 ${i + 1}/${totalSegments} 段语音...`);
             
-            const blob = await makeRequest(apiUrl, false, segments[i], apiName === 'deno-api', `#${currentRequestId}`);
-            if (blob) {
-                results.push(blob);
-                const timestamp = new Date().toLocaleTimeString();
-                const speaker = $('#speaker option:selected').text();
-                const shortenedText = segments[i].length > 7 ? segments[i].substring(0, 7) + '...' : segments[i];
-                const requestInfo = `#${currentRequestId}(${i + 1}/${totalSegments})`;
-                addHistoryItem(timestamp, speaker, shortenedText, blob, requestInfo);
-            }
+            await makeRequest(apiUrl, false, segments[i], apiName === 'deno-api', `#${currentRequestId}`)
+                .then(blob => {
+                    if (blob) {
+                        hasSuccessfulSegment = true;
+                        results.push(blob);
+                        const timestamp = new Date().toLocaleTimeString();
+                        const speaker = $('#speaker option:selected').text();
+                        const shortenedText = segments[i].length > 7 ? segments[i].substring(0, 7) + '...' : segments[i];
+                        const requestInfo = `#${currentRequestId}(${i + 1}/${totalSegments})`;
+                        addHistoryItem(timestamp, speaker, shortenedText, blob, requestInfo);
+                    }
+                });
             
             if (i < segments.length - 1) {
                 await new Promise(resolve => setTimeout(resolve, 3000));
@@ -469,7 +474,7 @@ async function generateVoiceForLongText(segments) {
         }
     }
 
-    if (results.length === 0) {
+    if (!hasSuccessfulSegment) {
         throw new Error('所有片段生成失败');
     }
 
