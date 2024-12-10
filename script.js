@@ -107,7 +107,7 @@ function generateVoice(isPreview) {
     const apiName = $('#api').val();
     const apiUrl = API_CONFIG[apiName].url;
     const text = $('#text').val().trim();
-    const maxLength = 3600;
+    const maxLength = 20000;
     
     if (!text) {
         showError('请输入要转换的文本');
