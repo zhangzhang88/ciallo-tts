@@ -107,7 +107,7 @@ function generateVoice(isPreview) {
     const apiName = $('#api').val();
     const apiUrl = API_CONFIG[apiName].url;
     const text = $('#text').val().trim();
-    const maxLength = 20000;
+    const maxLength = 3000;
     
     if (!text) {
         showError('请输入要转换的文本');
@@ -195,7 +195,7 @@ function makeRequest(url, isPreview, text, isDenoApi) {
         if (error.name === 'AbortError') {
             showError('请求超时，请重试');
         } else {
-            showError(`生成失败：${isDenoApi ? 'Deno API 服务暂时不可用，请尝试使用 Workers API' : error.message}`);
+            showError(`生成失���：${isDenoApi ? 'Deno API 服务暂时不可用，请尝试使用 Workers API' : error.message}`);
         }
     })
     .finally(() => {

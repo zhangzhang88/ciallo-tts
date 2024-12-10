@@ -262,12 +262,13 @@ function serveHomepage(url: URL): Response {
   });
 }
 
-function makeCORSHeaders(): HeadersInit {
+function makeCORSHeaders() {
   return {
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET,HEAD,POST,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    "Access-Control-Max-Age": "86400"
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept",
+    "Access-Control-Max-Age": "86400",
+    "Vary": "Origin"
   };
 }
 
