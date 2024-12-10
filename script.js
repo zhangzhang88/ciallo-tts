@@ -51,7 +51,10 @@ function updateSliderLabel(sliderId, labelId) {
 $(document).ready(function() {
     loadSpeakers().then(() => {
         $('#apiTips').text('使用 Workers API，每天限制 100000 次请求');
-
+        
+        // 初始化音频播放器
+        initializeAudioPlayer();
+        
         $('[data-toggle="tooltip"]').tooltip();
 
         $('#api').on('change', function() {
@@ -162,7 +165,7 @@ function makeRequest(url, isPreview, text, isDenoApi, requestId = '') {
     try {
         new URL(url);
     } catch (e) {
-        showError('无效的请求地址');
+        showError('无效的请求��址');
         return Promise.reject(e);
     }
     
@@ -208,7 +211,7 @@ function makeRequest(url, isPreview, text, isDenoApi, requestId = '') {
     })
     .then(blob => {
         if (!blob.type.includes('audio/')) {
-            throw new Error('返回的不是音频文件');
+            throw new Error('返回的不是音频文��');
         }
         
         currentAudioURL = URL.createObjectURL(blob);
@@ -354,17 +357,32 @@ function initializeAudioPlayer() {
     audio.style.borderRadius = '12px';
     audio.style.width = '100%';
     audio.style.marginTop = '20px';
+    
+    // 设置初始状态
+    $('#download').addClass('disabled').attr('href', '#');
+    $('#audio').attr('src', '');
 }
 
-function showMessage(message, type = 'error') {
-    const errorDiv = $('#error');
-    errorDiv.removeClass('alert-danger alert-warning alert-info')
-           .addClass(`alert-${type}`)
-           .text(message)
-           .show();
+function showMessage(message, type = 'danger') {
+    const toast = $(`
+        <div class="toast">
+            <div class="toast-body toast-${type}">
+                ${message}
+            </div>
+        </div>
+    `);
     
+    $('.toast-container').append(toast);
+    
+    // 显示动画
     setTimeout(() => {
-        errorDiv.fadeOut();
+        toast.addClass('show');
+    }, 100);
+    
+    // 3秒后淡出并移除
+    setTimeout(() => {
+        toast.removeClass('show');
+        setTimeout(() => toast.remove(), 300);
     }, 3000);
 }
 
@@ -479,4 +497,16 @@ async function generateVoiceForLongText(segments) {
     }
 
     return new Blob(results, { type: 'audio/mpeg' });
+}
+
+// 在 body 末尾添加 toast 容器
+$('body').append('<div class="toast-container"></div>');
+
+// 可以添加其他类型的消息提示
+function showWarning(message) {
+    showMessage(message, 'warning');
+}
+
+function showInfo(message) {
+    showMessage(message, 'info');
 }
