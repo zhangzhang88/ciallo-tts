@@ -89,7 +89,7 @@ $(document).ready(function() {
 
         $('#text').on('input', function() {
             const currentLength = $(this).val().length;
-            $('#charCount').text(`最多3000个字符，目前已输入${currentLength}个字符`);
+            $('#charCount').text(`最多25000个字符，目前已输入${currentLength}个字符`);
         });
     });
 });
@@ -366,7 +366,7 @@ function showMessage(message, type = 'error') {
 const SENTENCE_ENDINGS = /[.。！？!?]/;
 const PARAGRAPH_ENDINGS = /[\n\r]/;
 
-function splitText(text, maxLength = 2000) {
+function splitText(text, maxLength = 2500) {
     const segments = [];
     let remainingText = text.trim();
 
@@ -377,25 +377,39 @@ function splitText(text, maxLength = 2000) {
         }
 
         let splitIndex = -1;
-        const searchStart = Math.max(maxLength - 500, 0);
-        const searchEnd = Math.min(maxLength + 100, remainingText.length);
+        const searchStart = Math.max(maxLength - 300, 0);
+        const searchEnd = Math.min(maxLength + 200, remainingText.length);
         
-        // 1. 优先在理想范围内寻找段落结束符
+        // 1. 优先寻找段落结束符（包括中英文标点）
         const paragraphMatch = remainingText.slice(searchStart, searchEnd).match(/[。！？!?.]\n|\n|。|！|？|!|\?|\./);
         if (paragraphMatch) {
             splitIndex = searchStart + paragraphMatch.index + 1;
         }
 
-        // 2. 如果没找到合适的分割点，在最大长度处强制分割
+        // 2. 如果没找到合适的分割点，在最大长度处寻找句号
         if (splitIndex === -1) {
-            splitIndex = maxLength;
+            const sentenceMatch = remainingText.slice(0, maxLength + 200).match(/[。！？!?.][^。！？!?.]*$/);
+            if (sentenceMatch) {
+                splitIndex = sentenceMatch.index + 1;
+            }
         }
 
-        // 确保不会在单词中间分割（针对英文）
-        if (/[a-zA-Z]/.test(remainingText[splitIndex - 1]) && /[a-zA-Z]/.test(remainingText[splitIndex])) {
-            const lastSpace = remainingText.slice(0, splitIndex).lastIndexOf(' ');
-            if (lastSpace > maxLength - 100) {
-                splitIndex = lastSpace + 1;
+        // 3. 如果还是没找到，在最大长度处寻找逗号
+        if (splitIndex === -1) {
+            const commaMatch = remainingText.slice(maxLength - 200, maxLength + 200).match(/[,，]/);
+            if (commaMatch) {
+                splitIndex = maxLength - 200 + commaMatch.index + 1;
+            }
+        }
+
+        // 4. 如果都没找到，在最大长度处分割，但要避免分割英文单词
+        if (splitIndex === -1) {
+            splitIndex = maxLength;
+            if (/[a-zA-Z]/.test(remainingText[splitIndex - 1]) && /[a-zA-Z]/.test(remainingText[splitIndex])) {
+                const lastSpace = remainingText.slice(0, splitIndex).lastIndexOf(' ');
+                if (lastSpace > maxLength - 100) {
+                    splitIndex = lastSpace + 1;
+                }
             }
         }
 
@@ -438,7 +452,7 @@ async function generateVoiceForLongText(segments) {
             }
         } catch (error) {
             showError(`第 ${i + 1}/${totalSegments} 段生成失败：${error.message}`);
-            // 继续处理下一段，而不是直接返回null
+            // 续处理下一段，而不是直接返回null
             continue;
         }
     }
