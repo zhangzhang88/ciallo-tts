@@ -126,12 +126,6 @@ function generateVoice(isPreview) {
     // 处理长文本
     const segments = splitText(text);
     if (segments.length > 1) {
-        $('#loading').show();
-        $('#error').hide();
-        $('#result').hide();
-        $('#generateButton').prop('disabled', true);
-        $('#previewButton').prop('disabled', true);
-
         generateVoiceForLongText(segments).then(finalBlob => {
             if (finalBlob) {
                 if (currentAudioURL) {
@@ -148,7 +142,6 @@ function generateVoice(isPreview) {
                 addHistoryItem(timestamp, speaker, shortenedText, finalBlob);
             }
         }).finally(() => {
-            $('#loading').hide();
             $('#generateButton').prop('disabled', false);
             $('#previewButton').prop('disabled', false);
         });
@@ -165,13 +158,11 @@ function makeRequest(url, isPreview, text, isDenoApi, requestId = '') {
     try {
         new URL(url);
     } catch (e) {
-        showError('无效的请求��址');
+        showError('无效的请求地址');
         return Promise.reject(e);
     }
     
-    $('#loading').show();
-    $('#error').hide();
-    $('#result').hide();
+    showLoading('正在生成语音，请稍候...');
     $('#generateButton').prop('disabled', true);
     $('#previewButton').prop('disabled', true);
 
@@ -211,13 +202,15 @@ function makeRequest(url, isPreview, text, isDenoApi, requestId = '') {
     })
     .then(blob => {
         if (!blob.type.includes('audio/')) {
-            throw new Error('返回的不是音频文��');
+            throw new Error('返回的不是音频文件');
         }
         
         currentAudioURL = URL.createObjectURL(blob);
         $('#result').show();
         $('#audio').attr('src', currentAudioURL);
-        $('#download').attr('href', currentAudioURL);
+        $('#download')
+            .removeClass('disabled')
+            .attr('href', currentAudioURL);
 
         if (!isPreview) {
             const timestamp = new Date().toLocaleTimeString();
@@ -235,7 +228,7 @@ function makeRequest(url, isPreview, text, isDenoApi, requestId = '') {
         }
     })
     .finally(() => {
-        $('#loading').hide();
+        hideLoading();
         $('#generateButton').prop('disabled', false);
         $('#previewButton').prop('disabled', false);
     });
@@ -358,8 +351,10 @@ function initializeAudioPlayer() {
     audio.style.width = '100%';
     audio.style.marginTop = '20px';
     
-    // 设置初始状态
-    $('#download').addClass('disabled').attr('href', '#');
+    // 初始状态设置
+    $('#download')
+        .addClass('disabled')
+        .attr('href', '#');
     $('#audio').attr('src', '');
 }
 
@@ -444,6 +439,55 @@ function splitText(text, maxLength = 2500) {
     return segments;
 }
 
+function showLoading(message) {
+    // 如果已经存在loading提示，则更新内容
+    let loadingToast = $('.toast-loading');
+    if (loadingToast.length) {
+        loadingToast.find('.toast-body').html(`
+            <div class="text-center">
+                <i class="fas fa-spinner fa-spin"></i>
+                <div class="mt-2">${message}</div>
+                <div class="progress mt-2">
+                    <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                </div>
+            </div>
+        `);
+        return;
+    }
+
+    // 创建新的loading提示
+    const toast = $(`
+        <div class="toast toast-loading">
+            <div class="toast-body toast-info">
+                <div class="text-center">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <div class="mt-2">${message}</div>
+                    <div class="progress mt-2">
+                        <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `);
+    
+    $('.toast-container').append(toast);
+    setTimeout(() => toast.addClass('show'), 100);
+}
+
+function hideLoading() {
+    const loadingToast = $('.toast-loading');
+    loadingToast.removeClass('show');
+    setTimeout(() => loadingToast.remove(), 300);
+}
+
+function updateLoadingProgress(progress, message) {
+    const loadingToast = $('.toast-loading');
+    if (loadingToast.length) {
+        loadingToast.find('.progress-bar').css('width', `${progress}%`);
+        loadingToast.find('.mt-2').text(message);
+    }
+}
+
 async function generateVoiceForLongText(segments) {
     const results = [];
     const apiName = $('#api').val();
@@ -452,23 +496,14 @@ async function generateVoiceForLongText(segments) {
     requestCounter++;
     const currentRequestId = requestCounter;
     
-    $('#loading').html(`
-        <div class="text-center">
-            <i class="fas fa-spinner fa-spin"></i>
-            <div class="mt-2">正在生成第 1/${totalSegments} 段语音...</div>
-            <div class="progress mt-2">
-                <div class="progress-bar" role="progressbar" style="width: 0%"></div>
-            </div>
-        </div>
-    `);
+    showLoading(`正在生成第 1/${totalSegments} 段语音...`);
 
     let hasSuccessfulSegment = false;
 
     for (let i = 0; i < segments.length; i++) {
         try {
             const progress = ((i + 1) / totalSegments * 100).toFixed(1);
-            $('#loading .progress-bar').css('width', `${progress}%`);
-            $('#loading .mt-2').text(`正在生成第 ${i + 1}/${totalSegments} 段语音...`);
+            updateLoadingProgress(progress, `正在生成第 ${i + 1}/${totalSegments} 段语音...`);
             
             await makeRequest(apiUrl, false, segments[i], apiName === 'deno-api', `#${currentRequestId}`)
                 .then(blob => {
@@ -491,6 +526,8 @@ async function generateVoiceForLongText(segments) {
             showError(`第 ${i + 1}/${totalSegments} 段生成失败：${error.message}`);
         }
     }
+
+    hideLoading();
 
     if (!hasSuccessfulSegment) {
         throw new Error('所有片段生成失败');

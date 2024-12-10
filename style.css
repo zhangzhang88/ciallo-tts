@@ -242,3 +242,23 @@ footer a:hover {
 .toast-info {
     background: linear-gradient(145deg, #3b82f6 0%, #2563eb 100%);
 }
+
+.toast-loading {
+    min-width: 300px;
+}
+
+.toast-loading .progress {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+    margin-top: 10px;
+}
+
+.toast-loading .progress-bar {
+    background-color: #ffffff;
+    transition: width 0.3s ease;
+}
+
+.toast-loading .fa-spinner {
+    margin-right: 8px;
+}
