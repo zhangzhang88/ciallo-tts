@@ -119,7 +119,6 @@ function generateVoice(isPreview) {
         return;
     }
 
-    // 处理长文本
     const segments = splitText(text);
     if (segments.length > 1) {
         $('#loading').show();
@@ -137,11 +136,6 @@ function generateVoice(isPreview) {
                 $('#result').show();
                 $('#audio').attr('src', currentAudioURL);
                 $('#download').attr('href', currentAudioURL);
-
-                const timestamp = new Date().toLocaleTimeString();
-                const speaker = $('#speaker option:selected').text();
-                const shortenedText = text.length > 5 ? text.substring(0, 5) + '...' : text;
-                addHistoryItem(timestamp, speaker, shortenedText, finalBlob);
             }
         }).finally(() => {
             $('#loading').hide();
@@ -149,7 +143,15 @@ function generateVoice(isPreview) {
             $('#previewButton').prop('disabled', false);
         });
     } else {
-        makeRequest(apiUrl, false, text, apiName === 'deno-api');
+        const requestId = new Date().getTime().toString().slice(-4);
+        makeRequest(apiUrl, false, text, apiName === 'deno-api').then(blob => {
+            if (blob) {
+                const speaker = $('#speaker option:selected').text();
+                const shortenedText = text.length > 10 ? text.substring(0, 10) + '...' : text;
+                const requestInfo = `#${requestId}-1/1`;
+                addHistoryItem('', speaker, shortenedText, blob, requestInfo);
+            }
+        });
     }
 }
 
@@ -400,7 +402,7 @@ function splitText(text, maxLength = 2500) {
             }
         }
 
-        // 3. 如果还是没找到，在最大长度处寻找逗号
+        // 3. 如果还是没��到，在最大长度处寻找逗号
         if (splitIndex === -1) {
             const commaMatch = remainingText.slice(maxLength - 200, maxLength + 200).match(/[,，]/);
             if (commaMatch) {
@@ -431,7 +433,7 @@ async function generateVoiceForLongText(segments) {
     const apiName = $('#api').val();
     const apiUrl = API_CONFIG[apiName].url;
     const totalSegments = segments.length;
-    const requestId = new Date().getTime(); // 生成唯一的请求ID
+    const requestId = new Date().getTime().toString().slice(-4);
     
     $('#loading').html(`
         <div class="text-center">
@@ -452,13 +454,10 @@ async function generateVoiceForLongText(segments) {
             const blob = await makeRequest(apiUrl, false, segments[i], apiName === 'deno-api');
             if (blob) {
                 results.push(blob);
-                // 为每个分段添加历史记录
                 const timestamp = new Date().toLocaleTimeString();
                 const speaker = $('#speaker option:selected').text();
-                const shortenedText = segments[i].length > 5 ? segments[i].substring(0, 5) + '...' : segments[i];
-                const requestInfo = segments.length > 1 ? 
-                    `#${requestId.toString().slice(-4)}-${i + 1}/${totalSegments}` : 
-                    `#${requestId.toString().slice(-4)}`;
+                const shortenedText = segments[i].length > 10 ? segments[i].substring(0, 10) + '...' : segments[i];
+                const requestInfo = `#${requestId}-${i + 1}/${totalSegments}`;
                 addHistoryItem(timestamp, speaker, shortenedText, blob, requestInfo);
             }
             
