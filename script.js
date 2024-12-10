@@ -318,12 +318,10 @@ function playAudio(audioURL) {
     allPlayButtons.html('<i class="fas fa-play"></i>');
     
     // 设置新的音频源并播放
-    audioElement.onerror = function() {
-        showError('音频播放失败，请重试');
-    };
     audioElement.src = audioURL;
     audioElement.load();
     
+    // 只在实际播放时才设置错误处理
     audioElement.play().then(() => {
         // 更新当前播放按钮图标
         allPlayButtons.each(function() {
@@ -332,8 +330,10 @@ function playAudio(audioURL) {
             }
         });
     }).catch(error => {
-        console.error('播放失败:', error);
-        showError('音频播放失败，请重试');
+        if (error.name !== 'AbortError') {  // 忽略中止错误
+            console.error('播放失败:', error);
+            showError('音频播放失败，请重试');
+        }
     });
     
     // 监听播放结束事件
