@@ -250,12 +250,15 @@ function addHistoryItem(timestamp, speaker, text, audioBlob, requestInfo = '') {
 
     const audioURL = URL.createObjectURL(audioBlob);
     
+    const displayText = text.length > 10 ? text.substring(0, 7) + '...' : text;
+    
     const historyItem = $(`
         <div class="history-item list-group-item" style="opacity: 0;">
             <div class="d-flex justify-content-between align-items-center">
-                <span class="text-truncate" style="max-width: 60%;">
+                <span class="text-truncate" style="max-width: 70%;">
                     <strong class="text-primary">${requestInfo}</strong> 
-                    ${timestamp} -（${speaker}）- ${text}
+                    <span class="text-muted">${speaker}</span> 
+                    ${displayText}
                 </span>
                 <div class="btn-group">
                     <button class="btn btn-sm btn-outline-primary play-btn" data-url="${audioURL}">
