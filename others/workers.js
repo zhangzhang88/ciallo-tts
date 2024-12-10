@@ -32,7 +32,7 @@ async function handleRequest(request) {
     const path = requestUrl.pathname;
     switch (path) {
         case "/tts":
-            return handleTTS(requestUrl);
+            return handleTTS(requestUrl, request);
         case "/voices":
             return handleVoices(requestUrl);
         default:
@@ -51,18 +51,42 @@ async function handleOptions(request) {
     });
 }
 
-async function handleTTS(requestUrl) {
-    const text = requestUrl.searchParams.get("t") || "";
-    const voiceName = requestUrl.searchParams.get("v") || "zh-CN-XiaoxiaoMultilingualNeural";
-    const rate = Number(requestUrl.searchParams.get("r")) || 0;
-    const pitch = Number(requestUrl.searchParams.get("p")) || 0;
-    const outputFormat = requestUrl.searchParams.get("o") || "audio-24khz-48kbitrate-mono-mp3";
-    const download = requestUrl.searchParams.get("d") === "true";
-    try {
-        const response = await getVoice(text, voiceName, rate, pitch, outputFormat, download);
-        return addCORSHeaders(response);
-    } catch (error) {
-        return new Response("Internal Server Error", { status: 500 });
+async function handleTTS(requestUrl, request) {
+    if (request.method === "POST") {
+        try {
+            const body = await request.json();
+            const text = body.text || "";
+            const voiceName = body.voice || "zh-CN-XiaoxiaoMultilingualNeural";
+            const rate = Number(body.rate) || 0;
+            const pitch = Number(body.pitch) || 0;
+            const outputFormat = body.format || "audio-24khz-48kbitrate-mono-mp3";
+            const download = !body.preview;
+            
+            const response = await getVoice(text, voiceName, rate, pitch, outputFormat, download);
+            return addCORSHeaders(response);
+        } catch (error) {
+            return new Response(JSON.stringify({ error: error.message }), {
+                status: 400,
+                headers: {
+                    "Content-Type": "application/json",
+                    ...makeCORSHeaders()
+                }
+            });
+        }
+    } else {
+        // 保持原有的 GET 处理逻辑
+        const text = requestUrl.searchParams.get("t") || "";
+        const voiceName = requestUrl.searchParams.get("v") || "zh-CN-XiaoxiaoMultilingualNeural";
+        const rate = Number(requestUrl.searchParams.get("r")) || 0;
+        const pitch = Number(requestUrl.searchParams.get("p")) || 0;
+        const outputFormat = requestUrl.searchParams.get("o") || "audio-24khz-48kbitrate-mono-mp3";
+        const download = requestUrl.searchParams.get("d") === "true";
+        try {
+            const response = await getVoice(text, voiceName, rate, pitch, outputFormat, download);
+            return addCORSHeaders(response);
+        } catch (error) {
+            return new Response("Internal Server Error", { status: 500 });
+        }
     }
 }
 

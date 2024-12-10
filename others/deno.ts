@@ -86,7 +86,7 @@ async function handleRequest(req: Request): Promise<Response> {
       if (req.method !== "GET") {
         return new Response("Method Not Allowed", { status: 405, headers: makeCORSHeaders() });
       }
-      return await handleTTSRequest(url);
+      return await handleTTSRequest(url, req);
     case "/voices":
       if (req.method !== "GET") {
         return new Response("Method Not Allowed", { status: 405, headers: makeCORSHeaders() });
@@ -97,20 +97,51 @@ async function handleRequest(req: Request): Promise<Response> {
   }
 }
 
-async function handleTTSRequest(url: URL): Promise<Response> {
-  const text = url.searchParams.get("text");
-  const voice = url.searchParams.get("voice");
-  const rate = Number(url.searchParams.get("rate") || "0") / 100;
-  const pitch = Number(url.searchParams.get("pitch") || "0") / 100;
-  const format = url.searchParams.get("format") || "audio/mpeg";
-  const download = url.searchParams.get("download") === "true";
+async function handleTTSRequest(url: URL, req: Request): Promise<Response> {
+  if (req.method === "POST") {
+    try {
+      const body = await req.json();
+      const text = body.text;
+      const voice = body.voice;
+      const rate = Number(body.rate || 0) / 100;
+      const pitch = Number(body.pitch || 0) / 100;
+      const format = body.format || "audio/mpeg";
+      const download = !body.preview;
 
-  if (!text || !voice) {
-    return new Response("Bad Request: Missing required parameters", { status: 400, headers: makeCORSHeaders() });
+      if (!text || !voice) {
+        return new Response("Bad Request: Missing required parameters", { 
+          status: 400, 
+          headers: makeCORSHeaders() 
+        });
+      }
+
+      console.log(`TTS POST请求 - text=${text}, voice=${voice}, rate=${rate}, pitch=${pitch}, format=${format}, download=${download}`);
+      return await synthesizeSpeech(text, voice, rate, pitch, format, download);
+    } catch (error) {
+      return new Response(`Bad Request: ${error.message}`, { 
+        status: 400, 
+        headers: makeCORSHeaders() 
+      });
+    }
+  } else {
+    // 保持原有的 GET 处理逻辑
+    const text = url.searchParams.get("text");
+    const voice = url.searchParams.get("voice");
+    const rate = Number(url.searchParams.get("rate") || "0") / 100;
+    const pitch = Number(url.searchParams.get("pitch") || "0") / 100;
+    const format = url.searchParams.get("format") || "audio/mpeg";
+    const download = url.searchParams.get("download") === "true";
+
+    if (!text || !voice) {
+      return new Response("Bad Request: Missing required parameters", { 
+        status: 400, 
+        headers: makeCORSHeaders() 
+      });
+    }
+
+    console.log(`TTS GET请求 - text=${text}, voice=${voice}, rate=${rate}, pitch=${pitch}, format=${format}, download=${download}`);
+    return await synthesizeSpeech(text, voice, rate, pitch, format, download);
   }
-
-  console.log(`TTS 请求 - text=${text}, voice=${voice}, rate=${rate}, pitch=${pitch}, format=${format}, download=${download}`);
-  return await synthesizeSpeech(text, voice, rate, pitch, format, download);
 }
 
 async function handleVoicesRequest(url: URL): Promise<Response> {

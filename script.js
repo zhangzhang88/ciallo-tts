@@ -106,7 +106,6 @@ function canMakeRequest() {
 function generateVoice(isPreview) {
     const apiName = $('#api').val();
     const apiUrl = API_CONFIG[apiName].url;
-    const speaker = $('#speaker').val();
     const text = $('#text').val().trim();
     const maxLength = 3600;
     
@@ -121,36 +120,7 @@ function generateVoice(isPreview) {
     }
 
     const previewText = isPreview ? text.substring(0, 20) : text;
-    let rate = $('#rate').val();
-    let pitch = $('#pitch').val();
-
-    if (apiName === 'deno-api') {
-        const rateConverted = (parseFloat(rate) / 100).toFixed(2);
-        const pitchConverted = (parseFloat(pitch) / 100).toFixed(2);
-        
-        const params = new URLSearchParams({
-            text: previewText,
-            voice: speaker,
-            rate: rateConverted,
-            pitch: pitchConverted
-        });
-        
-        if (!isPreview) {
-            params.append('download', 'true');
-        }
-        
-        const url = `${apiUrl}?${params.toString()}`;
-        
-        makeRequest(url, isPreview, text, true);
-    } else {
-        let url = `${apiUrl}?t=${encodeURIComponent(previewText)}&v=${encodeURIComponent(speaker)}`;
-        url += `&r=${encodeURIComponent(rate)}&p=${encodeURIComponent(pitch)}`;
-        if (!isPreview) {
-            url += '&d=true';
-        }
-        
-        makeRequest(url, isPreview, text, false);
-    }
+    makeRequest(apiUrl, isPreview, previewText, apiName === 'deno-api');
 }
 
 const cachedAudio = new Map();
@@ -176,11 +146,22 @@ function makeRequest(url, isPreview, text, isDenoApi) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
 
+    const requestBody = {
+        text: text,
+        voice: $('#speaker').val(),
+        rate: parseInt($('#rate').val()),
+        pitch: parseInt($('#pitch').val()),
+        preview: isPreview
+    };
+
     return fetch(url, { 
+        method: 'POST',
         signal: controller.signal,
         headers: {
-            'Accept': 'audio/mpeg'
-        }
+            'Accept': 'audio/mpeg',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
     })
     .then(response => {
         clearTimeout(timeoutId);
