@@ -239,7 +239,7 @@ function showError(message) {
     showMessage(message, 'danger');
 }
 
-function addHistoryItem(timestamp, speaker, text, audioBlob) {
+function addHistoryItem(timestamp, speaker, text, audioBlob, requestInfo = '') {
     const MAX_HISTORY = 50;
     const historyItems = $('#historyItems');
     
@@ -253,7 +253,9 @@ function addHistoryItem(timestamp, speaker, text, audioBlob) {
     const historyItem = $(`
         <div class="history-item list-group-item" style="opacity: 0;">
             <div class="d-flex justify-content-between align-items-center">
-                <span class="text-truncate" style="max-width: 60%;">${timestamp} -（${speaker}）- ${text}</span>
+                <span class="text-truncate" style="max-width: 60%;">
+                    ${requestInfo ? `[${requestInfo}] ` : ''}${timestamp} -（${speaker}）- ${text}
+                </span>
                 <div class="btn-group">
                     <button class="btn btn-sm btn-outline-primary play-btn" data-url="${audioURL}">
                         <i class="fas fa-play"></i>
@@ -425,6 +427,7 @@ async function generateVoiceForLongText(segments) {
     const apiName = $('#api').val();
     const apiUrl = API_CONFIG[apiName].url;
     const totalSegments = segments.length;
+    const requestId = new Date().getTime(); // 生成唯一的请求ID
     
     $('#loading').html(`
         <div class="text-center">
@@ -438,22 +441,27 @@ async function generateVoiceForLongText(segments) {
 
     for (let i = 0; i < segments.length; i++) {
         try {
-            // 更新进度条
             const progress = ((i + 1) / totalSegments * 100).toFixed(1);
             $('#loading .progress-bar').css('width', `${progress}%`);
             $('#loading .mt-2').text(`正在生成第 ${i + 1}/${totalSegments} 段语音...`);
             
             const blob = await makeRequest(apiUrl, false, segments[i], apiName === 'deno-api');
-            if (blob) results.push(blob);
+            if (blob) {
+                results.push(blob);
+                // 为每个分段添加历史记录
+                const timestamp = new Date().toLocaleTimeString();
+                const speaker = $('#speaker option:selected').text();
+                const shortenedText = segments[i].length > 5 ? segments[i].substring(0, 5) + '...' : segments[i];
+                const requestInfo = `请求#${requestId.toString().slice(-4)}-${i + 1}/${totalSegments}`;
+                addHistoryItem(timestamp, speaker, shortenedText, blob, requestInfo);
+            }
             
-            // 添加延迟避免请求过快
             if (i < segments.length - 1) {
                 await new Promise(resolve => setTimeout(resolve, 3000));
             }
         } catch (error) {
+            console.error(`分段 ${i + 1} 生成失败:`, error);
             showError(`第 ${i + 1}/${totalSegments} 段生成失败：${error.message}`);
-            // 续处理下一段，而不是直接返回null
-            continue;
         }
     }
 
