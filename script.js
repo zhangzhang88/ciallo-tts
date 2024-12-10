@@ -1,6 +1,7 @@
 let apiConfig;
 let lastRequestTime = 0;
 let currentAudioURL = null;
+let requestCounter = 0;
 
 const API_CONFIG = {
     'workers-api': {
@@ -149,13 +150,15 @@ function generateVoice(isPreview) {
             $('#previewButton').prop('disabled', false);
         });
     } else {
-        makeRequest(apiUrl, false, text, apiName === 'deno-api');
+        requestCounter++;
+        const currentRequestId = requestCounter;
+        makeRequest(apiUrl, false, text, apiName === 'deno-api', `#${currentRequestId}`);
     }
 }
 
 const cachedAudio = new Map();
 
-function makeRequest(url, isPreview, text, isDenoApi) {
+function makeRequest(url, isPreview, text, isDenoApi, requestId = '') {
     try {
         new URL(url);
     } catch (e) {
@@ -216,8 +219,8 @@ function makeRequest(url, isPreview, text, isDenoApi) {
         if (!isPreview) {
             const timestamp = new Date().toLocaleTimeString();
             const speaker = $('#speaker option:selected').text();
-            const shortenedText = text.length > 5 ? text.substring(0, 5) + '...' : text;
-            addHistoryItem(timestamp, speaker, shortenedText, blob);
+            const shortenedText = text.length > 7 ? text.substring(0, 7) + '...' : text;
+            addHistoryItem(timestamp, speaker, shortenedText, blob, requestId);
         }
     })
     .catch(error => {
@@ -250,19 +253,12 @@ function addHistoryItem(timestamp, speaker, text, audioBlob, requestInfo = '') {
 
     const audioURL = URL.createObjectURL(audioBlob);
     
-    // 获取原始文本的前7个字符
-    const displayText = text.length > 7 ? text.substring(0, 7) + '...' : text;
-    
-    // 格式化显示内容
-    const displayContent = requestInfo ? 
-        `${requestInfo}-<span class="text-primary">${speaker}</span>-${displayText}` :
-        `#${Date.now().toString().slice(-4)}-<span class="text-primary">${speaker}</span>-${displayText}`;
-
     const historyItem = $(`
         <div class="history-item list-group-item" style="opacity: 0;">
             <div class="d-flex justify-content-between align-items-center">
                 <span class="text-truncate" style="max-width: 60%;">
-                    ${displayContent}
+                    <strong class="text-primary">${requestInfo}</strong> 
+                    ${timestamp} -（${speaker}）- ${text}
                 </span>
                 <div class="btn-group">
                     <button class="btn btn-sm btn-outline-primary play-btn" data-url="${audioURL}">
@@ -391,7 +387,7 @@ function splitText(text, maxLength = 2500) {
         const searchEnd = Math.min(maxLength + 200, remainingText.length);
         
         // 1. 优先寻找段落结束符（包括中英文标点）
-        const paragraphMatch = remainingText.slice(searchStart, searchEnd).match(/[。！？!?.]\n|\n|。|！|？|!|\?|\./);
+        const paragraphMatch = remainingText.slice(searchStart, searchEnd).match(/[��！？!?.]\n|\n|。|！|？|!|\?|\./);
         if (paragraphMatch) {
             splitIndex = searchStart + paragraphMatch.index + 1;
         }
@@ -435,7 +431,8 @@ async function generateVoiceForLongText(segments) {
     const apiName = $('#api').val();
     const apiUrl = API_CONFIG[apiName].url;
     const totalSegments = segments.length;
-    const requestId = new Date().getTime(); // 生成唯一的请求ID
+    requestCounter++;
+    const currentRequestId = requestCounter;
     
     $('#loading').html(`
         <div class="text-center">
@@ -453,14 +450,13 @@ async function generateVoiceForLongText(segments) {
             $('#loading .progress-bar').css('width', `${progress}%`);
             $('#loading .mt-2').text(`正在生成第 ${i + 1}/${totalSegments} 段语音...`);
             
-            const blob = await makeRequest(apiUrl, false, segments[i], apiName === 'deno-api');
+            const blob = await makeRequest(apiUrl, false, segments[i], apiName === 'deno-api', `#${currentRequestId}`);
             if (blob) {
                 results.push(blob);
-                // 为每个分段添加历史记录
                 const timestamp = new Date().toLocaleTimeString();
                 const speaker = $('#speaker option:selected').text();
-                const shortenedText = segments[i].length > 5 ? segments[i].substring(0, 5) + '...' : segments[i];
-                const requestInfo = `请求#${requestId.toString().slice(-4)}-${i + 1}/${totalSegments}`;
+                const shortenedText = segments[i].length > 7 ? segments[i].substring(0, 7) + '...' : segments[i];
+                const requestInfo = `#${currentRequestId}(${i + 1}/${totalSegments})`;
                 addHistoryItem(timestamp, speaker, shortenedText, blob, requestInfo);
             }
             
