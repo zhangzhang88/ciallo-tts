@@ -248,6 +248,7 @@ function addHistoryItem(timestamp, speaker, text, audioBlob, requestInfo = '') {
     }
 
     const audioURL = URL.createObjectURL(audioBlob);
+    cachedAudio.set(audioURL, audioBlob);
     
     const historyItem = $(`
         <div class="history-item list-group-item" style="opacity: 0;">
@@ -277,7 +278,7 @@ function addHistoryItem(timestamp, speaker, text, audioBlob, requestInfo = '') {
             if (currentAudioURL) {
                 URL.revokeObjectURL(currentAudioURL);
             }
-            currentAudioURL = audioURL;
+            currentAudioURL = URL.createObjectURL(cachedAudio.get(audioURL));
             $('#result').show();
             $('#audio').attr('src', currentAudioURL);
             $('#download')
@@ -286,8 +287,10 @@ function addHistoryItem(timestamp, speaker, text, audioBlob, requestInfo = '') {
         }
     });
     
+    // 在条目被移除时清理资源
     historyItem.on('remove', () => {
         URL.revokeObjectURL(audioURL);
+        cachedAudio.delete(audioURL);
     });
     
     historyItem.find('.play-btn').on('click', function(e) {
@@ -347,18 +350,28 @@ function playAudio(audioURL) {
 }
 
 function downloadAudio(audioURL) {
-    const link = document.createElement('a');
-    link.href = audioURL;
-    link.download = 'audio.mp3';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const blob = cachedAudio.get(audioURL);
+    if (blob) {
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'audio.mp3';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+    }
 }
 
 function clearHistory() {
     $('#historyItems .history-item').each(function() {
         $(this).remove();
     });
+    
+    // 清理所有缓存的音频
+    cachedAudio.forEach((blob, url) => {
+        URL.revokeObjectURL(url);
+    });
+    cachedAudio.clear();
     
     $('#historyItems').empty();
     alert("历史记录已清除！");
@@ -477,7 +490,7 @@ function splitText(text, maxLength = 2500) {
 }
 
 function showLoading(message) {
-    // 如果已经存在loading提示，则更新内容
+    // 如果已经存在loading���示，则更新内容
     let loadingToast = $('.toast-loading');
     if (loadingToast.length) {
         loadingToast.find('.toast-body').html(`
