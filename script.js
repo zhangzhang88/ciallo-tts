@@ -89,7 +89,7 @@ $(document).ready(function() {
 
         $('#text').on('input', function() {
             const currentLength = $(this).val().length;
-            $('#charCount').text(`最多3600个字符，目前已输入${currentLength}个字符`);
+            $('#charCount').text(`最多20000个字符，目前已输入${currentLength}个字符`);
         });
     });
 });
