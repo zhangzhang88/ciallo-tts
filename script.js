@@ -368,7 +368,7 @@ const PARAGRAPH_ENDINGS = /[\n\r]/;
 
 function splitText(text, maxLength = 2000) {
     const segments = [];
-    let remainingText = text;
+    let remainingText = text.trim();
 
     while (remainingText.length > 0) {
         if (remainingText.length <= maxLength) {
@@ -376,35 +376,31 @@ function splitText(text, maxLength = 2000) {
             break;
         }
 
-        // 在2000字范围内寻找段落结束
         let splitIndex = -1;
-        const searchEnd = Math.min(maxLength + 500, remainingText.length);
+        const searchStart = Math.max(maxLength - 500, 0);
+        const searchEnd = Math.min(maxLength + 100, remainingText.length);
         
-        // 1. 先找回车（自然段落）
-        for (let i = maxLength; i >= maxLength - 500 && i >= 0; i--) {
-            if (PARAGRAPH_ENDINGS.test(remainingText[i])) {
-                splitIndex = i + 1;
-                break;
-            }
+        // 1. 优先在理想范围内寻找段落结束符
+        const paragraphMatch = remainingText.slice(searchStart, searchEnd).match(/[。！？!?.]\n|\n|。|！|？|!|\?|\./);
+        if (paragraphMatch) {
+            splitIndex = searchStart + paragraphMatch.index + 1;
         }
 
-        // 2. 如果没找到回车，找句号
-        if (splitIndex === -1) {
-            for (let i = maxLength; i >= maxLength - 500 && i >= 0; i--) {
-                if (SENTENCE_ENDINGS.test(remainingText[i])) {
-                    splitIndex = i + 1;
-                    break;
-                }
-            }
-        }
-
-        // 3. 如果都没找到，强制分割
+        // 2. 如果没找到合适的分割点，在最大长度处强制分割
         if (splitIndex === -1) {
             splitIndex = maxLength;
         }
 
-        segments.push(remainingText.substring(0, splitIndex));
-        remainingText = remainingText.substring(splitIndex);
+        // 确保不会在单词中间分割（针对英文）
+        if (/[a-zA-Z]/.test(remainingText[splitIndex - 1]) && /[a-zA-Z]/.test(remainingText[splitIndex])) {
+            const lastSpace = remainingText.slice(0, splitIndex).lastIndexOf(' ');
+            if (lastSpace > maxLength - 100) {
+                splitIndex = lastSpace + 1;
+            }
+        }
+
+        segments.push(remainingText.substring(0, splitIndex).trim());
+        remainingText = remainingText.substring(splitIndex).trim();
     }
 
     return segments;
@@ -414,22 +410,41 @@ async function generateVoiceForLongText(segments) {
     const results = [];
     const apiName = $('#api').val();
     const apiUrl = API_CONFIG[apiName].url;
+    const totalSegments = segments.length;
     
+    $('#loading').html(`
+        <div class="text-center">
+            <i class="fas fa-spinner fa-spin"></i>
+            <div class="mt-2">正在生成第 1/${totalSegments} 段语音...</div>
+            <div class="progress mt-2">
+                <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+            </div>
+        </div>
+    `);
+
     for (let i = 0; i < segments.length; i++) {
-        $('#loading').text(`正在生成第 ${i + 1}/${segments.length} 段语音...`);
-        
         try {
+            // 更新进度条
+            const progress = ((i + 1) / totalSegments * 100).toFixed(1);
+            $('#loading .progress-bar').css('width', `${progress}%`);
+            $('#loading .mt-2').text(`正在生成第 ${i + 1}/${totalSegments} 段语音...`);
+            
             const blob = await makeRequest(apiUrl, false, segments[i], apiName === 'deno-api');
-            results.push(blob);
+            if (blob) results.push(blob);
+            
+            // 添加延迟避免请求过快
+            if (i < segments.length - 1) {
+                await new Promise(resolve => setTimeout(resolve, 3000));
+            }
         } catch (error) {
-            showError(`第 ${i + 1} 段生成失败：${error.message}`);
-            return null;
+            showError(`第 ${i + 1}/${totalSegments} 段生成失败：${error.message}`);
+            // 继续处理下一段，而不是直接返回null
+            continue;
         }
-        
-        // 添加延迟避免请求过快
-        if (i < segments.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 3000));
-        }
+    }
+
+    if (results.length === 0) {
+        throw new Error('所有片段生成失败');
     }
 
     return new Blob(results, { type: 'audio/mpeg' });
