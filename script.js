@@ -254,7 +254,7 @@ function addHistoryItem(timestamp, speaker, text, audioBlob, requestInfo = '') {
             <div class="d-flex justify-content-between align-items-center">
                 <span class="text-truncate" style="max-width: 60%;">
                     <strong class="text-primary">${requestInfo}</strong> 
-                    ${timestamp} -（${speaker}）- ${text}
+                    ${timestamp} - <span class="text-primary">${speaker}</span> - ${text}
                 </span>
                 <div class="btn-group">
                     <button class="btn btn-sm btn-outline-primary play-btn" data-url="${audioURL}">
@@ -268,11 +268,30 @@ function addHistoryItem(timestamp, speaker, text, audioBlob, requestInfo = '') {
         </div>
     `);
     
+    // 添加整个条目的点击事件
+    historyItem.on('click', function(e) {
+        // 如果点击的是按钮，不触发条目的点击事件
+        if (!$(e.target).closest('.btn-group').length) {
+            playAudio(audioURL);
+            // 更新预览区
+            if (currentAudioURL) {
+                URL.revokeObjectURL(currentAudioURL);
+            }
+            currentAudioURL = audioURL;
+            $('#result').show();
+            $('#audio').attr('src', currentAudioURL);
+            $('#download')
+                .removeClass('disabled')
+                .attr('href', currentAudioURL);
+        }
+    });
+    
     historyItem.on('remove', () => {
         URL.revokeObjectURL(audioURL);
     });
     
-    historyItem.find('.play-btn').on('click', function() {
+    historyItem.find('.play-btn').on('click', function(e) {
+        e.stopPropagation();  // 阻止事件冒泡
         playAudio($(this).data('url'));
     });
     

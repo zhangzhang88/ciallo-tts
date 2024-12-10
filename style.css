@@ -80,12 +80,14 @@ body {
     border: 1px solid rgba(99, 102, 241, 0.08);
     transition: all 0.2s ease;
     padding: 1rem;
+    cursor: pointer;
 }
 
 .history-item:hover {
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(99, 102, 241, 0.08);
     border-color: rgba(99, 102, 241, 0.15);
+    background: linear-gradient(145deg, #f8faff 0%, #f0f7ff 100%);
 }
 
 .btn-group .btn {
