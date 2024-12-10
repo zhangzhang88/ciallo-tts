@@ -254,7 +254,8 @@ function addHistoryItem(timestamp, speaker, text, audioBlob, requestInfo = '') {
         <div class="history-item list-group-item" style="opacity: 0;">
             <div class="d-flex justify-content-between align-items-center">
                 <span class="text-truncate" style="max-width: 60%;">
-                    ${requestInfo ? `[${requestInfo}] ` : ''}${timestamp} -（${speaker}）- ${text}
+                    <strong class="text-primary">${requestInfo}</strong> 
+                    ${timestamp} -（${speaker}）- ${text}
                 </span>
                 <div class="btn-group">
                     <button class="btn btn-sm btn-outline-primary play-btn" data-url="${audioURL}">
@@ -452,7 +453,9 @@ async function generateVoiceForLongText(segments) {
                 const timestamp = new Date().toLocaleTimeString();
                 const speaker = $('#speaker option:selected').text();
                 const shortenedText = segments[i].length > 5 ? segments[i].substring(0, 5) + '...' : segments[i];
-                const requestInfo = `请求#${requestId.toString().slice(-4)}-${i + 1}/${totalSegments}`;
+                const requestInfo = segments.length > 1 ? 
+                    `#${requestId.toString().slice(-4)}-${i + 1}/${totalSegments}` : 
+                    `#${requestId.toString().slice(-4)}`;
                 addHistoryItem(timestamp, speaker, shortenedText, blob, requestInfo);
             }
             
