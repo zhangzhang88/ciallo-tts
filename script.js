@@ -408,8 +408,17 @@ function splitText(text, maxLength = 2500) {
     const segments = [];
     let remainingText = text.trim();
 
+    // 计算实际字符长度（汉字=2，英文字母和其他字符=1）
+    function getTextLength(str) {
+        return str.split('').reduce((acc, char) => {
+            // 使用 Unicode 范围判断是否为汉字
+            return acc + (/[\u4e00-\u9fa5]/.test(char) ? 2 : 1);
+        }, 0);
+    }
+
     while (remainingText.length > 0) {
-        if (remainingText.length <= maxLength) {
+        // 如果剩余文本的实际长度小于最大长度，直接添加
+        if (getTextLength(remainingText) <= maxLength * 2) {  // 将最大长度乘2
             segments.push(remainingText);
             break;
         }
@@ -442,10 +451,19 @@ function splitText(text, maxLength = 2500) {
 
         // 4. 如果都没找到，在最大长度处分割，但要避免分割英文单词
         if (splitIndex === -1) {
-            splitIndex = maxLength;
+            let currentLength = 0;
+            let i = 0;
+            // 累加字符长度直到达到最大长度
+            while (i < remainingText.length && currentLength < maxLength * 2) {
+                currentLength += /[\u4e00-\u9fa5]/.test(remainingText[i]) ? 2 : 1;
+                i++;
+            }
+            splitIndex = i;
+
+            // 避免分割英文单词
             if (/[a-zA-Z]/.test(remainingText[splitIndex - 1]) && /[a-zA-Z]/.test(remainingText[splitIndex])) {
                 const lastSpace = remainingText.slice(0, splitIndex).lastIndexOf(' ');
-                if (lastSpace > maxLength - 100) {
+                if (lastSpace > splitIndex - 100) {
                     splitIndex = lastSpace + 1;
                 }
             }
