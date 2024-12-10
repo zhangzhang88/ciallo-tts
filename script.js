@@ -107,20 +107,50 @@ function generateVoice(isPreview) {
     const apiName = $('#api').val();
     const apiUrl = API_CONFIG[apiName].url;
     const text = $('#text').val().trim();
-    const maxLength = 3000;
     
     if (!text) {
         showError('请输入要转换的文本');
         return;
     }
-    
-    if (text.length > maxLength) {
-        showError(`文本长度不能超过${maxLength}个字符`);
+
+    if (isPreview) {
+        const previewText = text.substring(0, 20);
+        makeRequest(apiUrl, true, previewText, apiName === 'deno-api');
         return;
     }
 
-    const previewText = isPreview ? text.substring(0, 20) : text;
-    makeRequest(apiUrl, isPreview, previewText, apiName === 'deno-api');
+    // 处理长文本
+    const segments = splitText(text);
+    if (segments.length > 1) {
+        $('#loading').show();
+        $('#error').hide();
+        $('#result').hide();
+        $('#generateButton').prop('disabled', true);
+        $('#previewButton').prop('disabled', true);
+
+        generateVoiceForLongText(segments).then(finalBlob => {
+            if (finalBlob) {
+                if (currentAudioURL) {
+                    URL.revokeObjectURL(currentAudioURL);
+                }
+                currentAudioURL = URL.createObjectURL(finalBlob);
+                $('#result').show();
+                $('#audio').attr('src', currentAudioURL);
+                $('#download').attr('href', currentAudioURL);
+
+                const timestamp = new Date().toLocaleTimeString();
+                const speaker = $('#speaker option:selected').text();
+                const shortenedText = text.length > 5 ? text.substring(0, 5) + '...' : text;
+                addHistoryItem(timestamp, speaker, shortenedText, finalBlob);
+            }
+        }).finally(() => {
+            $('#loading').hide();
+            $('#generateButton').prop('disabled', false);
+            $('#previewButton').prop('disabled', false);
+        });
+    } else {
+        makeRequest(apiUrl, false, text, apiName === 'deno-api');
+    }
 }
 
 const cachedAudio = new Map();
@@ -330,4 +360,77 @@ function showMessage(message, type = 'error') {
     setTimeout(() => {
         errorDiv.fadeOut();
     }, 3000);
+}
+
+// 添加句子结束符号的正则表达式
+const SENTENCE_ENDINGS = /[.。！？!?]/;
+const PARAGRAPH_ENDINGS = /[\n\r]/;
+
+function splitText(text, maxLength = 2000) {
+    const segments = [];
+    let remainingText = text;
+
+    while (remainingText.length > 0) {
+        if (remainingText.length <= maxLength) {
+            segments.push(remainingText);
+            break;
+        }
+
+        // 在2000字范围内寻找段落结束
+        let splitIndex = -1;
+        const searchEnd = Math.min(maxLength + 500, remainingText.length);
+        
+        // 1. 先找回车（自然段落）
+        for (let i = maxLength; i >= maxLength - 500 && i >= 0; i--) {
+            if (PARAGRAPH_ENDINGS.test(remainingText[i])) {
+                splitIndex = i + 1;
+                break;
+            }
+        }
+
+        // 2. 如果没找到回车，找句号
+        if (splitIndex === -1) {
+            for (let i = maxLength; i >= maxLength - 500 && i >= 0; i--) {
+                if (SENTENCE_ENDINGS.test(remainingText[i])) {
+                    splitIndex = i + 1;
+                    break;
+                }
+            }
+        }
+
+        // 3. 如果都没找到，强制分割
+        if (splitIndex === -1) {
+            splitIndex = maxLength;
+        }
+
+        segments.push(remainingText.substring(0, splitIndex));
+        remainingText = remainingText.substring(splitIndex);
+    }
+
+    return segments;
+}
+
+async function generateVoiceForLongText(segments) {
+    const results = [];
+    const apiName = $('#api').val();
+    const apiUrl = API_CONFIG[apiName].url;
+    
+    for (let i = 0; i < segments.length; i++) {
+        $('#loading').text(`正在生成第 ${i + 1}/${segments.length} 段语音...`);
+        
+        try {
+            const blob = await makeRequest(apiUrl, false, segments[i], apiName === 'deno-api');
+            results.push(blob);
+        } catch (error) {
+            showError(`第 ${i + 1} 段生成失败：${error.message}`);
+            return null;
+        }
+        
+        // 添加延迟避免请求过快
+        if (i < segments.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 3000));
+        }
+    }
+
+    return new Blob(results, { type: 'audio/mpeg' });
 }
