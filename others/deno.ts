@@ -83,7 +83,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
   switch (path) {
     case "/tts":
-      if (req.method !== "GET") {
+      if (req.method !== "GET" && req.method !== "POST") {
         return new Response("Method Not Allowed", { status: 405, headers: makeCORSHeaders() });
       }
       return await handleTTSRequest(url, req);
@@ -238,7 +238,7 @@ function serveHomepage(url: URL): Response {
             <li>获取所有语音列表：<pre>GET /voices</pre>
               <a href="${baseUrl}/voices">试试</a>
             </li>
-            <li>按地区过滤：<pre>GET /voices?locale=zh</pre>
+            <li>��地区过滤：<pre>GET /voices?locale=zh</pre>
               <a href="${baseUrl}/voices?locale=zh">试试</a>
             </li>
             <li>YAML格式（详细信息）：<pre>GET /voices?format=yaml&detail=true</pre>
