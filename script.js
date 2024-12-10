@@ -195,7 +195,7 @@ function makeRequest(url, isPreview, text, isDenoApi) {
         if (error.name === 'AbortError') {
             showError('请求超时，请重试');
         } else {
-            showError(`生成失���：${isDenoApi ? 'Deno API 服务暂时不可用，请尝试使用 Workers API' : error.message}`);
+            showError(`生成失败：${isDenoApi ? 'Deno API 服务暂时不可用，请尝试使用 Workers API' : error.message}`);
         }
     })
     .finally(() => {
@@ -225,11 +225,11 @@ function addHistoryItem(timestamp, speaker, text, audioBlob) {
             <div class="d-flex justify-content-between align-items-center">
                 <span class="text-truncate" style="max-width: 60%;">${timestamp} -（${speaker}）- ${text}</span>
                 <div class="btn-group">
-                    <button class="btn btn-sm btn-outline-primary" onclick="playAudio('${audioURL}')">
-                        播放
+                    <button class="btn btn-sm btn-outline-primary play-btn" data-url="${audioURL}">
+                        <i class="fas fa-play"></i>
                     </button>
                     <button class="btn btn-sm btn-outline-success" onclick="downloadAudio('${audioURL}')">
-                        下载
+                        <i class="fas fa-download"></i>
                     </button>
                 </div>
             </div>
@@ -240,21 +240,59 @@ function addHistoryItem(timestamp, speaker, text, audioBlob) {
         URL.revokeObjectURL(audioURL);
     });
     
+    historyItem.find('.play-btn').on('click', function() {
+        playAudio($(this).data('url'));
+    });
+    
     $('#historyItems').prepend(historyItem);
     setTimeout(() => historyItem.animate({ opacity: 1 }, 300), 50);
 }
 
 function playAudio(audioURL) {
     const audioElement = $('#audio')[0];
+    const allPlayButtons = $('.play-btn');
+    
+    // 如果点击的是当前正在播放的音频
+    if (audioElement.src === audioURL && !audioElement.paused) {
+        audioElement.pause();
+        allPlayButtons.each(function() {
+            if ($(this).data('url') === audioURL) {
+                $(this).html('<i class="fas fa-play"></i>');
+            }
+        });
+        return;
+    }
+    
+    // 重置所有按钮图标
+    allPlayButtons.html('<i class="fas fa-play"></i>');
+    
+    // 设置新的音频源并播放
     audioElement.onerror = function() {
         showError('音频播放失败，请重试');
     };
     audioElement.src = audioURL;
     audioElement.load();
-    audioElement.play().catch(error => {
+    
+    audioElement.play().then(() => {
+        // 更新当前播放按钮图标
+        allPlayButtons.each(function() {
+            if ($(this).data('url') === audioURL) {
+                $(this).html('<i class="fas fa-pause"></i>');
+            }
+        });
+    }).catch(error => {
         console.error('播放失败:', error);
         showError('音频播放失败，请重试');
     });
+    
+    // 监听播放结束事件
+    audioElement.onended = function() {
+        allPlayButtons.each(function() {
+            if ($(this).data('url') === audioURL) {
+                $(this).html('<i class="fas fa-play"></i>');
+            }
+        });
+    };
 }
 
 function downloadAudio(audioURL) {
