@@ -118,7 +118,7 @@ footer a:hover {
     border-radius: 10px;
     border: 1px solid rgba(74, 144, 226, 0.15);
     transition: all 0.2s ease;
-    background: linear-gradient(145deg, #ffffff 0%, #e6f0f8 100%);
+    background: #ffffff;
 }
 
 .form-control:focus {
