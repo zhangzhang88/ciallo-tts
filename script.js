@@ -368,7 +368,7 @@ function clearHistory() {
     cachedAudio.clear();
     
     $('#historyItems').empty();
-    alert("历史记录���清除！");
+    alert("历史记录已清除！");
 }
 
 function initializeAudioPlayer() {
@@ -425,13 +425,13 @@ function getTextLength(str) {
         return acc + (char.charCodeAt(0) > 127 ? 2 : 1);
     }, 0);
 
-    // 将停顿时间转换为等效字符长度（1秒 = 5.5个字符）
-    const pauseLength = Math.round(totalPauseTime * 5.5);
+    // 将停顿时间转换为等效字符长度（1秒 = 11个单位，相当于5.5个中文字符）
+    const pauseLength = Math.round(totalPauseTime * 11);
 
     return textLength + pauseLength;
 }
 
-function splitText(text, maxLength = 2500) {
+function splitText(text, maxLength = 5000) {
     const segments = [];
     let remainingText = text.trim();
 
@@ -449,14 +449,14 @@ function splitText(text, maxLength = 2500) {
             return acc + (char.charCodeAt(0) > 127 ? 2 : 1);
         }, 0);
 
-        // 将停顿时间转换为等效字符长度（1秒 = 5.5个字符）
-        const pauseLength = Math.round(totalPauseTime * 5.5);
+        // 将停顿时间转换为等效字符长度（1秒 = 11个单位，相当于5.5个中文字符）
+        const pauseLength = Math.round(totalPauseTime * 11);
 
         return textLength + pauseLength;
     }
 
     while (remainingText.length > 0) {
-        if (getTextLength(remainingText) <= maxLength * 2) {
+        if (getTextLength(remainingText) <= maxLength) {
             segments.push(remainingText);
             break;
         }
@@ -517,13 +517,13 @@ function splitText(text, maxLength = 2500) {
             }
 
             currentLength += remainingText.charCodeAt(i) > 127 ? 2 : 1;
-            if (currentLength > maxLength * 2) {
+            if (currentLength > maxLength) {
                 splitIndex = i;
                 break;
             }
         }
 
-        // 优先在标点处分段（不在括号内）
+        // 优先在标点处分段
         if (lastPunctuationIndex > 0 && lastPunctuationIndex > splitIndex - 50) {
             splitIndex = lastPunctuationIndex + 1;
         }
