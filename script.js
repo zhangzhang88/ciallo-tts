@@ -188,17 +188,30 @@ function generateVoice(isPreview) {
 const cachedAudio = new Map();
 
 function escapeXml(text) {
-    return text
+    // 临时替换 SSML 标签
+    const ssmlTags = [];
+    let tempText = text.replace(/<break\s+time=["'](\d+(?:\.\d+)?[ms]s?)["']\s*\/>/g, (match) => {
+        ssmlTags.push(match);
+        return `__SSML_TAG_${ssmlTags.length - 1}__`;
+    });
+
+    // 转义其他特殊字符
+    tempText = tempText
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&apos;');
+
+    // 还原 SSML 标签
+    tempText = tempText.replace(/__SSML_TAG_(\d+)__/g, (_, index) => ssmlTags[parseInt(index)]);
+
+    return tempText;
 }
 
 async function makeRequest(url, isPreview, text, isDenoApi, requestId = '') {
     try {
-        // 转义文本中的特殊字符
+        // 转义文本中的特殊字符，但保护 SSML 标签
         const escapedText = escapeXml(text);
         
         const response = await fetch(url, { 
