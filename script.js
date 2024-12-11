@@ -79,7 +79,7 @@ $(document).ready(function() {
             if (canMakeRequest()) {
                 generateVoice(false);
             } else {
-                showError('请稍候再试，每3秒只能请求一次。');
+                showError('请稍候再试，���3秒只能请求一次。');
             }
         });
 
@@ -148,7 +148,7 @@ function generateVoice(isPreview) {
     } else {
         requestCounter++;
         const currentRequestId = requestCounter;
-        makeRequest(apiUrl, false, text, apiName === 'deno-api', `#${currentRequestId}`);
+        makeRequest(apiUrl, false, text, apiName === 'deno-api', `#${currentRequestId}(1/1)`);
     }
 }
 
@@ -440,7 +440,7 @@ function splitText(text, maxLength = 2500) {
         const searchStart = Math.max(maxLength - 300, 0);
         const searchEnd = Math.min(maxLength + 200, remainingText.length);
         
-        // 1. 优先寻找段落结束符（包括中英文标点）
+        // 1. 优先寻找段落结束符（包括中���文标点）
         const paragraphMatch = remainingText.slice(searchStart, searchEnd).match(/[！？!?.]\n|\n|。|！|？|!|\?|\./);
         if (paragraphMatch) {
             splitIndex = searchStart + paragraphMatch.index + 1;
