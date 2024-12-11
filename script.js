@@ -435,26 +435,6 @@ function splitText(text, maxLength = 5000) {
     const segments = [];
     let remainingText = text.trim();
 
-    function getTextLength(str) {
-        // 移除 XML 标签，但记录停顿时间
-        let totalPauseTime = 0;
-        const textWithoutTags = str.replace(/<break\s+time="(\d+(?:\.\d+)?)(m?s)"\s*\/>/g, (match, time, unit) => {
-            const seconds = unit === 'ms' ? parseFloat(time) / 1000 : parseFloat(time);
-            totalPauseTime += seconds;
-            return '';
-        });
-
-        // 计算文本长度（中文2字符，英文1字符）
-        const textLength = textWithoutTags.split('').reduce((acc, char) => {
-            return acc + (char.charCodeAt(0) > 127 ? 2 : 1);
-        }, 0);
-
-        // 将停顿时间转换为等效字符长度（1秒 = 11个单位，相当于5.5个中文字符）
-        const pauseLength = Math.round(totalPauseTime * 11);
-
-        return textLength + pauseLength;
-    }
-
     while (remainingText.length > 0) {
         if (getTextLength(remainingText) <= maxLength) {
             segments.push(remainingText);
@@ -536,7 +516,6 @@ function splitText(text, maxLength = 5000) {
 }
 
 function showLoading(message) {
-    // 如果已经存在loading示，则更新内容
     let loadingToast = $('.toast-loading');
     if (loadingToast.length) {
         loadingToast.find('.toast-body').html(`
@@ -592,8 +571,9 @@ async function generateVoiceForLongText(segments) {
     requestCounter++;
     const currentRequestId = requestCounter;
     
-    showLoading(`正在生成第 1/${totalSegments} 段语音...`);
-
+    // 只在开始时显示加载提示
+    showLoading('');
+    
     let hasSuccessfulSegment = false;
     const MAX_RETRIES = 3;
 
@@ -606,6 +586,7 @@ async function generateVoiceForLongText(segments) {
             try {
                 const progress = ((i + 1) / totalSegments * 100).toFixed(1);
                 const retryInfo = retryCount > 0 ? `(重试 ${retryCount}/${MAX_RETRIES})` : '';
+                // 只使用 updateLoadingProgress 更新进度
                 updateLoadingProgress(progress, `正在生成第 ${i + 1}/${totalSegments} 段语音${retryInfo}...`);
                 
                 const blob = await makeRequest(
