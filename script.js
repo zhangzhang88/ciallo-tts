@@ -232,7 +232,7 @@ async function makeRequest(url, isPreview, text, isDenoApi, requestId = '') {
         });
 
         if (!response.ok) {
-            throw new Error(`服务器响应错误: ${response.status}`);
+            throw new Error(`服务器响应��误: ${response.status}`);
         }
 
         const blob = await response.blob();
@@ -602,9 +602,10 @@ async function generateVoiceForLongText(segments) {
     requestCounter++;
     const currentRequestId = requestCounter;
     
-    // 获取原始文本的前几个字符用于显示
+    // 获取原始文本并清理 SSML 标签
     const originalText = $('#text').val();
-    const shortenedText = originalText.length > 7 ? originalText.substring(0, 7) + '...' : originalText;
+    const cleanText = originalText.replace(/<break\s+time=["'](\d+(?:\.\d+)?[ms]s?)["']\s*\/>/g, '');
+    const shortenedText = cleanText.length > 7 ? cleanText.substring(0, 7) + '...' : cleanText;
     
     showLoading('');
     
@@ -636,9 +637,11 @@ async function generateVoiceForLongText(segments) {
                     results.push(blob);
                     const timestamp = new Date().toLocaleTimeString();
                     const speaker = $('#speaker option:selected').text();
-                    const segmentText = segments[i].length > 7 ? segments[i].substring(0, 7) + '...' : segments[i];
+                    // 清理当前段的 SSML 标签
+                    const cleanSegmentText = segments[i].replace(/<break\s+time=["'](\d+(?:\.\d+)?[ms]s?)["']\s*\/>/g, '');
+                    const shortenedSegmentText = cleanSegmentText.length > 7 ? cleanSegmentText.substring(0, 7) + '...' : cleanSegmentText;
                     const requestInfo = `#${currentRequestId}(${i + 1}/${totalSegments})`;
-                    addHistoryItem(timestamp, speaker, segmentText, blob, requestInfo);
+                    addHistoryItem(timestamp, speaker, shortenedSegmentText, blob, requestInfo);
                 }
             } catch (error) {
                 lastError = error;
@@ -669,7 +672,7 @@ async function generateVoiceForLongText(segments) {
         const finalBlob = new Blob(results, { type: 'audio/mpeg' });
         const timestamp = new Date().toLocaleTimeString();
         const speaker = $('#speaker option:selected').text();
-        // 添加合并标记
+        // 使用之前清理过的文本
         const mergeRequestInfo = `#${currentRequestId}(合并)`;
         addHistoryItem(timestamp, speaker, shortenedText, finalBlob, mergeRequestInfo);
         return finalBlob;
