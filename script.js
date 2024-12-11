@@ -541,8 +541,8 @@ function splitText(text, maxLength = 5000) {
             }
         }
 
-        // 优先在标点处分段
-        if (lastPunctuationIndex > 0 && lastPunctuationIndex > splitIndex - 50) {
+        // 优先在标点处分段，可以调整搜索范围
+        if (lastPunctuationIndex > 0 && lastPunctuationIndex > splitIndex - 300) {
             splitIndex = lastPunctuationIndex + 1;
         }
 
