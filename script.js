@@ -79,7 +79,7 @@ $(document).ready(function() {
             if (canMakeRequest()) {
                 generateVoice(false);
             } else {
-                showError('请稍候再试，���3秒只能请求一次。');
+                showError('请稍候再试，3秒只能请求一次。');
             }
         });
 
@@ -431,7 +431,7 @@ function splitText(text, maxLength = 2500) {
 
     while (remainingText.length > 0) {
         // 如果剩余文本的实际长度小于最大长度，直接添加
-        if (getTextLength(remainingText) <= maxLength * 2) {  // 将最大长度乘2
+        if (getTextLength(remainingText) <= maxLength * 2) {  // 将最大长度��2
             segments.push(remainingText);
             break;
         }
@@ -440,7 +440,7 @@ function splitText(text, maxLength = 2500) {
         const searchStart = Math.max(maxLength - 300, 0);
         const searchEnd = Math.min(maxLength + 200, remainingText.length);
         
-        // 1. 优先寻找段落结束符（包括中���文标点）
+        // 1. 优先寻找段落结束符（包括中英文标点）
         const paragraphMatch = remainingText.slice(searchStart, searchEnd).match(/[！？!?.]\n|\n|。|！|？|!|\?|\./);
         if (paragraphMatch) {
             splitIndex = searchStart + paragraphMatch.index + 1;
@@ -555,7 +555,7 @@ async function generateVoiceForLongText(segments) {
             const progress = ((i + 1) / totalSegments * 100).toFixed(1);
             updateLoadingProgress(progress, `正在生成第 ${i + 1}/${totalSegments} 段语音...`);
             
-            await makeRequest(apiUrl, false, segments[i], apiName === 'deno-api', `#${currentRequestId}`)
+            await makeRequest(apiUrl, false, segments[i], apiName === 'deno-api', `#${currentRequestId}(${i + 1}/${totalSegments})`)
                 .then(blob => {
                     if (blob) {
                         hasSuccessfulSegment = true;
