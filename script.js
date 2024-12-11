@@ -165,6 +165,11 @@ function generateVoice(isPreview) {
                 $('#result').show();
                 $('#audio').attr('src', currentAudioURL);
                 $('#download').attr('href', currentAudioURL);
+
+                const timestamp = new Date().toLocaleTimeString();
+                const speaker = $('#speaker option:selected').text();
+                const shortenedText = text.length > 5 ? text.substring(0, 5) + '...' : text;
+                addHistoryItem(timestamp, speaker, shortenedText, finalBlob);
             }
         }).finally(() => {
             $('#generateButton').prop('disabled', false);
@@ -403,7 +408,7 @@ function showMessage(message, type = 'danger') {
 }
 
 // 添加句子结束符号的正则表达式
-const SENTENCE_ENDINGS = /[.。！？!?]/;
+const SENTENCE_ENDINGS = /[.。！��!?]/;
 const PARAGRAPH_ENDINGS = /[\n\r]/;
 
 function getTextLength(str) {
@@ -430,31 +435,33 @@ function splitText(text, maxLength = 5000) {
     const segments = [];
     let remainingText = text.trim();
 
+    // 修改括号配对规则，添加更多特殊字符
+    const bracketPairs = {
+        '（': '）', 
+        '(': ')',
+        '【': '】',
+        '[': ']',
+        '{': '}',
+        '"': '"',
+        "'": "'",
+        '「': '」',
+        '『': '』',
+        '《': '》'  // 添加书名号配对
+    };
+
+    // 修改标点符号列表，添加更多特殊字符
+    const punctuationMarks = [
+        '。', '！', '？', '；', '…', '，',  // 中文标点
+        '.', '!', '?', ';', ',',           // 英文标点
+        '\n', '\r\n',                      // 换行符
+        '：', ':', '—', '-'                // 添加更多标点
+    ];
+
     while (remainingText.length > 0) {
         if (getTextLength(remainingText) <= maxLength) {
             segments.push(remainingText);
             break;
         }
-
-        // 基本标点符号
-        const punctuationMarks = [
-            '。', '！', '？', '；', '…', '，',  // 中文标点
-            '.', '!', '?', ';', ',',           // 英文标点
-            '\n', '\r\n'                       // 换行符
-        ];
-
-        // 括号配对
-        const bracketPairs = {
-            '（': '）', 
-            '(': ')',
-            '【': '】',
-            '[': ']',
-            '{': '}',
-            '"': '"',
-            "'": "'",
-            '「': '���',
-            '『': '』'
-        };
 
         let splitIndex = remainingText.length;
         let currentLength = 0;
@@ -474,7 +481,7 @@ function splitText(text, maxLength = 5000) {
             }
             if (inTag) continue;
 
-            // 处理括号配对
+            // 改进括号配对处理
             if (bracketPairs[remainingText[i]]) {
                 bracketStack.push({
                     char: remainingText[i],
@@ -482,11 +489,14 @@ function splitText(text, maxLength = 5000) {
                 });
             } else if (Object.values(bracketPairs).includes(remainingText[i])) {
                 if (bracketStack.length > 0) {
-                    bracketStack.pop();
+                    const lastBracket = bracketStack[bracketStack.length - 1];
+                    if (bracketPairs[lastBracket.char] === remainingText[i]) {
+                        bracketStack.pop();
+                    }
                 }
             }
 
-            // 记录标点符号位置（���在括号内时）
+            // 记录标点符号位置（不在括号内时）
             if (punctuationMarks.includes(remainingText[i]) && bracketStack.length === 0) {
                 lastPunctuationIndex = i;
             }
