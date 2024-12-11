@@ -165,11 +165,6 @@ function generateVoice(isPreview) {
                 $('#result').show();
                 $('#audio').attr('src', currentAudioURL);
                 $('#download').attr('href', currentAudioURL);
-
-                const timestamp = new Date().toLocaleTimeString();
-                const speaker = $('#speaker option:selected').text();
-                const shortenedText = text.length > 5 ? text.substring(0, 5) + '...' : text;
-                addHistoryItem(timestamp, speaker, shortenedText, finalBlob);
             }
         }).finally(() => {
             $('#generateButton').prop('disabled', false);
@@ -178,7 +173,15 @@ function generateVoice(isPreview) {
     } else {
         requestCounter++;
         const currentRequestId = requestCounter;
-        makeRequest(apiUrl, false, text, apiName === 'deno-api', `#${currentRequestId}(1/1)`);
+        const requestInfo = `#${currentRequestId}(1/1)`;
+        makeRequest(apiUrl, false, text, apiName === 'deno-api', requestInfo).then(blob => {
+            if (blob) {
+                const timestamp = new Date().toLocaleTimeString();
+                const speaker = $('#speaker option:selected').text();
+                const shortenedText = text.length > 7 ? text.substring(0, 7) + '...' : text;
+                addHistoryItem(timestamp, speaker, shortenedText, blob, requestInfo);
+            }
+        });
     }
 }
 
