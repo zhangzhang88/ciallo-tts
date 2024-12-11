@@ -184,84 +184,48 @@ function generateVoice(isPreview) {
 
 const cachedAudio = new Map();
 
-function makeRequest(url, isPreview, text, isDenoApi, requestId = '') {
+async function makeRequest(url, isPreview, text, isDenoApi, requestId = '') {
     try {
-        new URL(url);
-    } catch (e) {
-        showError('无效的请求地址');
-        return Promise.reject(e);
-    }
-    
-    showLoading('正在生成语音，请稍候...');
-    $('#generateButton').prop('disabled', true);
-    $('#previewButton').prop('disabled', true);
+        const response = await fetch(url, { 
+            method: 'POST',
+            headers: {
+                'Accept': 'audio/mpeg',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                text: text,
+                voice: $('#speaker').val(),
+                rate: parseInt($('#rate').val()),
+                pitch: parseInt($('#pitch').val()),
+                preview: isPreview
+            })
+        });
 
-    if (currentAudioURL) {
-        URL.revokeObjectURL(currentAudioURL);
-    }
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 120000);
-
-    const requestBody = {
-        text: text,
-        voice: $('#speaker').val(),
-        rate: parseInt($('#rate').val()),
-        pitch: parseInt($('#pitch').val()),
-        preview: isPreview
-    };
-
-    return fetch(url, { 
-        method: 'POST',
-        signal: controller.signal,
-        headers: {
-            'Accept': 'audio/mpeg',
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestBody)
-    })
-    .then(response => {
-        clearTimeout(timeoutId);
         if (!response.ok) {
             throw new Error(`服务器响应错误: ${response.status}`);
         }
-        if (!response.headers.get('content-type')?.includes('audio/')) {
-            throw new Error('响应类型错误');
-        }
-        return response.blob();
-    })
-    .then(blob => {
-        if (!blob.type.includes('audio/')) {
-            throw new Error('返回的不是音频文件');
-        }
+
+        const blob = await response.blob();
         
-        currentAudioURL = URL.createObjectURL(blob);
-        $('#result').show();
-        $('#audio').attr('src', currentAudioURL);
-        $('#download')
-            .removeClass('disabled')
-            .attr('href', currentAudioURL);
+        // 验证返回的blob是否为有效的音频文件
+        if (!blob.type.includes('audio/') || blob.size === 0) {
+            throw new Error('无效的音频文件');
+        }
 
         if (!isPreview) {
-            const timestamp = new Date().toLocaleTimeString();
-            const speaker = $('#speaker option:selected').text();
-            const shortenedText = text.length > 7 ? text.substring(0, 7) + '...' : text;
-            addHistoryItem(timestamp, speaker, shortenedText, blob, requestId);
+            currentAudioURL = URL.createObjectURL(blob);
+            $('#result').show();
+            $('#audio').attr('src', currentAudioURL);
+            $('#download')
+                .removeClass('disabled')
+                .attr('href', currentAudioURL);
         }
-    })
-    .catch(error => {
+
+        return blob;
+    } catch (error) {
         console.error('请求错误:', error);
-        if (error.name === 'AbortError') {
-            showError('请求超时，请重试');
-        } else {
-            showError(`生成失败：${isDenoApi ? 'Deno API 服务暂时不可用，请尝试使用 Workers API' : error.message}`);
-        }
-    })
-    .finally(() => {
-        hideLoading();
-        $('#generateButton').prop('disabled', false);
-        $('#previewButton').prop('disabled', false);
-    });
+        throw error; // 向上传递错误，让调用者处理重试逻辑
+    }
 }
 
 function showError(message) {
@@ -404,7 +368,7 @@ function clearHistory() {
     cachedAudio.clear();
     
     $('#historyItems').empty();
-    alert("历史记录已清除！");
+    alert("历史记录���清除！");
 }
 
 function initializeAudioPlayer() {
@@ -636,6 +600,7 @@ async function generateVoiceForLongText(segments) {
     for (let i = 0; i < segments.length; i++) {
         let retryCount = 0;
         let success = false;
+        let lastError = null;
 
         while (retryCount < MAX_RETRIES && !success) {
             try {
@@ -660,19 +625,23 @@ async function generateVoiceForLongText(segments) {
                     const shortenedText = segments[i].length > 7 ? segments[i].substring(0, 7) + '...' : segments[i];
                     const requestInfo = `#${currentRequestId}(${i + 1}/${totalSegments})`;
                     addHistoryItem(timestamp, speaker, shortenedText, blob, requestInfo);
-                    break; // 成功后立即退出重试循环
                 }
             } catch (error) {
+                lastError = error;
                 retryCount++;
+                
                 if (retryCount < MAX_RETRIES) {
                     console.error(`分段 ${i + 1} 生成失败 (重试 ${retryCount}/${MAX_RETRIES}):`, error);
-                    // 重试前等待时间随重试次数增加
                     const waitTime = 3000 + (retryCount * 2000);
                     await new Promise(resolve => setTimeout(resolve, waitTime));
                 } else {
                     showError(`第 ${i + 1}/${totalSegments} 段生成失败：${error.message}`);
                 }
             }
+        }
+
+        if (!success) {
+            console.error(`分段 ${i + 1} 在 ${MAX_RETRIES} 次尝试后仍然失败:`, lastError);
         }
 
         // 如果当前段落成功了，且还有下一段，则等待3秒
@@ -683,16 +652,11 @@ async function generateVoiceForLongText(segments) {
 
     hideLoading();
 
-    if (!hasSuccessfulSegment) {
+    if (results.length === 0) {
         throw new Error('所有片段生成失败');
     }
 
-    // 如果有成功的片段，就返回已生成的部分
-    if (results.length > 0) {
-        return new Blob(results, { type: 'audio/mpeg' });
-    }
-
-    return null;
+    return new Blob(results, { type: 'audio/mpeg' });
 }
 
 // 在 body 末尾添加 toast 容器
