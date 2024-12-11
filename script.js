@@ -518,15 +518,8 @@ function splitText(text, maxLength = 5000) {
 function showLoading(message) {
     let loadingToast = $('.toast-loading');
     if (loadingToast.length) {
-        loadingToast.find('.toast-body').html(`
-            <div class="text-center">
-                <i class="fas fa-spinner fa-spin"></i>
-                <div class="mt-2">${message}</div>
-                <div class="progress mt-2">
-                    <div class="progress-bar" role="progressbar" style="width: 0%"></div>
-                </div>
-            </div>
-        `);
+        // 如果已存在 loading toast，只更新进度条，不更新消息
+        loadingToast.find('.progress-bar').css('width', '0%');
         return;
     }
 
@@ -536,7 +529,7 @@ function showLoading(message) {
             <div class="toast-body toast-info">
                 <div class="text-center">
                     <i class="fas fa-spinner fa-spin"></i>
-                    <div class="mt-2">${message}</div>
+                    <div class="loading-message mt-2">${message}</div>
                     <div class="progress mt-2">
                         <div class="progress-bar" role="progressbar" style="width: 0%"></div>
                     </div>
@@ -559,7 +552,7 @@ function updateLoadingProgress(progress, message) {
     const loadingToast = $('.toast-loading');
     if (loadingToast.length) {
         loadingToast.find('.progress-bar').css('width', `${progress}%`);
-        loadingToast.find('.mt-2').text(message);
+        loadingToast.find('.loading-message').text(message);
     }
 }
 
