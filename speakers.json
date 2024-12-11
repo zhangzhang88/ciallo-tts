@@ -1,6 +1,5 @@
 {
     "workers-api": {
-        "url": "https://worker-tts.api.zwei.de.eu.org/tts",
         "speakers": {
             "zh-CN-XiaoxiaoNeural": "晓晓",
             "zh-CN-YunxiNeural": "云希",
@@ -295,7 +294,6 @@
         }
     },
     "deno-api": {
-        "url": "https://deno-tts.api.zwei.de.eu.org/tts",
         "speakers": {
             "zh-HK-HiuMaanNeural": "HiuMaan-中文（粤语）",
             "zh-HK-HiuGaaiNeural": "HiuGaai-中文（粤语）",
