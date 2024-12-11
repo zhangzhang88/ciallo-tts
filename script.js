@@ -468,86 +468,53 @@ function splitText(text, maxLength = 5000) {
     const segments = [];
     let remainingText = text.trim();
 
-    // 修改括号配对规则，添加更多特殊字符
-    const bracketPairs = {
-        '（': '）', 
-        '(': ')',
-        '【': '】',
-        '[': ']',
-        '{': '}',
-        '"': '"',
-        "'": "'",
-        '「': '」',
-        '『': '』',
-        '《': '》'  // 添加书名号配对
-    };
-
-    // 修改标点符号列表，添加更多特殊字符
-    const punctuationMarks = [
-        '。', '！', '？', '；', '…', '，',  // 中文标点
-        '.', '!', '?', ';', ',',           // 英文标点
-        '\n', '\r\n',                      // 换行符
-        '：', ':', '—', '-'                // 添加更多标点
+    // 按优先级定义标点符号
+    const punctuationGroups = [
+        ['。', '！', '？'],       // 第一优先级: 句号、感叹号、问号
+        ['；'],                   // 第二优先级: 分号
+        ['，', '：'],             // 第三优先级: 逗号、冒号
+        ['\n', '\r\n'],          // 第四优先级: 换行符
+        ['、', '…'],             // 第五优先级: 顿号、省略号
+        [' ']                    // 第六优先级: 空格
     ];
 
     while (remainingText.length > 0) {
-        if (getTextLength(remainingText) <= maxLength) {
-            segments.push(remainingText);
-            break;
-        }
-
         let splitIndex = remainingText.length;
         let currentLength = 0;
-        let lastPunctuationIndex = -1;
+        let bestSplitIndex = -1;
+        let bestPriorityFound = -1;
         let inTag = false;
         let bracketStack = [];
 
         for (let i = 0; i < remainingText.length; i++) {
-            // 跳过 XML 标签内容
-            if (remainingText[i] === '<') {
-                inTag = true;
-                continue;
-            }
-            if (remainingText[i] === '>') {
-                inTag = false;
-                continue;
-            }
-            if (inTag) continue;
-
-            // 改进括号配对处理
-            if (bracketPairs[remainingText[i]]) {
-                bracketStack.push({
-                    char: remainingText[i],
-                    index: i
-                });
-            } else if (Object.values(bracketPairs).includes(remainingText[i])) {
-                if (bracketStack.length > 0) {
-                    const lastBracket = bracketStack[bracketStack.length - 1];
-                    if (bracketPairs[lastBracket.char] === remainingText[i]) {
-                        bracketStack.pop();
-                    }
-                }
-            }
-
-            // 记录标点符号位置（不在括号内时）
-            if (punctuationMarks.includes(remainingText[i]) && bracketStack.length === 0) {
-                lastPunctuationIndex = i;
-            }
-
             currentLength += remainingText.charCodeAt(i) > 127 ? 2 : 1;
+            
             if (currentLength > maxLength) {
                 splitIndex = i;
+                // 从splitIndex向前搜索300个单位
+                let searchLength = 0;
+                for (let j = i; j >= 0 && searchLength <= 300; j--) {
+                    searchLength += remainingText.charCodeAt(j) > 127 ? 2 : 1;
+                    
+                    // 检查每个优先级的标点
+                    for (let priority = 0; priority < punctuationGroups.length; priority++) {
+                        if (punctuationGroups[priority].includes(remainingText[j])) {
+                            // 如果找到更高优先级的标点，或者同优先级但更近的标点
+                            if (priority > bestPriorityFound || 
+                                (priority === bestPriorityFound && j > bestSplitIndex)) {
+                                bestPriorityFound = priority;
+                                bestSplitIndex = j;
+                            }
+                        }
+                    }
+                }
                 break;
             }
         }
 
-        if (lastPunctuationIndex > 0) {
-            // 计算从 splitIndex 到 lastPunctuationIndex 的实际单位长度
-            const searchText = remainingText.substring(lastPunctuationIndex, splitIndex);
-            const unitLength = getTextLength(searchText);
-            if (unitLength <= 300) {
-                splitIndex = lastPunctuationIndex + 1;
-            }
+        // 如果找到合适的分段点，使用它
+        if (bestSplitIndex > 0) {
+            splitIndex = bestSplitIndex + 1;
         }
 
         segments.push(remainingText.substring(0, splitIndex));
