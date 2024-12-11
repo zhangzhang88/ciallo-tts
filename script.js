@@ -468,14 +468,13 @@ function splitText(text, maxLength = 5000) {
     const segments = [];
     let remainingText = text.trim();
 
-    // 按优先级定义标点符号
     const punctuationGroups = [
-        ['。', '！', '？'],       // 第一优先级: 句号、感叹号、问号
-        ['；'],                   // 第二优先级: 分号
-        ['，', '：'],             // 第三优先级: 逗号、冒号
-        ['\n', '\r\n'],          // 第四优先级: 换行符
-        ['、', '…'],             // 第五优先级: 顿号、省略号
-        [' ']                    // 第六优先级: 空格
+        ['\n', '\r\n'],                             // 第一优先级: 换行符
+        ['。', '！', '？', '.', '!', '?', '¿', '¡'],  // 第二优先级: 句号、感叹号、问号
+        ['；', ';'],                                 // 第三优先级: 分号
+        ['，', '：', ',', ':'],                      // 第四优先级: 逗号、冒号
+        ['、', '…', '-', '—'],                      // 第五优先级: 顿号、省略号、破折号
+        [' ']                                       // 第六优先级: 空格
     ];
 
     while (remainingText.length > 0) {
@@ -483,36 +482,33 @@ function splitText(text, maxLength = 5000) {
         let currentLength = 0;
         let bestSplitIndex = -1;
         let bestPriorityFound = -1;
-        let inTag = false;
-        let bracketStack = [];
 
         for (let i = 0; i < remainingText.length; i++) {
             currentLength += remainingText.charCodeAt(i) > 127 ? 2 : 1;
             
             if (currentLength > maxLength) {
                 splitIndex = i;
-                // 从splitIndex向前搜索300个单位
-                let searchLength = 0;
-                for (let j = i; j >= 0 && searchLength <= 300; j--) {
-                    searchLength += remainingText.charCodeAt(j) > 127 ? 2 : 1;
-                    
-                    // 检查每个优先级的标点
-                    for (let priority = 0; priority < punctuationGroups.length; priority++) {
+                // 先遍历优先级组
+                for (let priority = 0; priority < punctuationGroups.length; priority++) {
+                    let searchLength = 0;
+                    // 在300单位范围内搜索当前优先级的标点
+                    for (let j = i; j >= 0 && searchLength <= 300; j--) {
+                        searchLength += remainingText.charCodeAt(j) > 127 ? 2 : 1;
+                        
                         if (punctuationGroups[priority].includes(remainingText[j])) {
-                            // 如果找到更高优先级的标点，或者同优先级但更近的标点
-                            if (priority > bestPriorityFound || 
-                                (priority === bestPriorityFound && j > bestSplitIndex)) {
-                                bestPriorityFound = priority;
-                                bestSplitIndex = j;
-                            }
+                            // 找到当前优先级的标点，记录位置并停止搜索
+                            bestPriorityFound = priority;
+                            bestSplitIndex = j;
+                            break;
                         }
                     }
+                    // 如果在当前优先级找到了分段点，就不再检查更低优先级
+                    if (bestSplitIndex > -1) break;
                 }
                 break;
             }
         }
 
-        // 如果找到合适的分段点，使用它
         if (bestSplitIndex > 0) {
             splitIndex = bestSplitIndex + 1;
         }
@@ -652,7 +648,7 @@ async function generateVoiceForLongText(segments) {
     throw new Error('所有片段生成失败');
 }
 
-// 在 body 末尾添加 toast 容器
+// 在 body 末尾添加 toast 容���
 $('body').append('<div class="toast-container"></div>');
 
 // 可以添加其他类型的消息提示
