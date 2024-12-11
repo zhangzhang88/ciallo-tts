@@ -232,7 +232,7 @@ async function makeRequest(url, isPreview, text, isDenoApi, requestId = '') {
         });
 
         if (!response.ok) {
-            throw new Error(`服务器响应��误: ${response.status}`);
+            throw new Error(`服务器响应错误: ${response.status}`);
         }
 
         const blob = await response.blob();
@@ -441,7 +441,7 @@ function showMessage(message, type = 'danger') {
 }
 
 // 添加句子结束符号的正则表达式
-const SENTENCE_ENDINGS = /[.。！��!?]/;
+const SENTENCE_ENDINGS = /[.。！!?？]/;
 const PARAGRAPH_ENDINGS = /[\n\r]/;
 
 function getTextLength(str) {
