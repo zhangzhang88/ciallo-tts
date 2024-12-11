@@ -631,7 +631,7 @@ async function generateVoiceForLongText(segments) {
     showLoading(`正在生成第 1/${totalSegments} 段语音...`);
 
     let hasSuccessfulSegment = false;
-    const MAX_RETRIES = 3; // 最大重试次数
+    const MAX_RETRIES = 3;
 
     for (let i = 0; i < segments.length; i++) {
         let retryCount = 0;
@@ -643,33 +643,34 @@ async function generateVoiceForLongText(segments) {
                 const retryInfo = retryCount > 0 ? `(重试 ${retryCount}/${MAX_RETRIES})` : '';
                 updateLoadingProgress(progress, `正在生成第 ${i + 1}/${totalSegments} 段语音${retryInfo}...`);
                 
-                await makeRequest(apiUrl, false, segments[i], apiName === 'deno-api', `#${currentRequestId}(${i + 1}/${totalSegments})`)
-                    .then(blob => {
-                        if (blob) {
-                            hasSuccessfulSegment = true;
-                            success = true;
-                            results.push(blob);
-                            const timestamp = new Date().toLocaleTimeString();
-                            const speaker = $('#speaker option:selected').text();
-                            const shortenedText = segments[i].length > 7 ? segments[i].substring(0, 7) + '...' : segments[i];
-                            const requestInfo = `#${currentRequestId}(${i + 1}/${totalSegments})`;
-                            addHistoryItem(timestamp, speaker, shortenedText, blob, requestInfo);
-                        }
-                    });
+                const blob = await makeRequest(
+                    apiUrl, 
+                    false, 
+                    segments[i], 
+                    apiName === 'deno-api', 
+                    `#${currentRequestId}(${i + 1}/${totalSegments})`
+                );
                 
-                if (!success) {
-                    throw new Error('生成失败');
+                if (blob) {
+                    hasSuccessfulSegment = true;
+                    success = true;
+                    results.push(blob);
+                    const timestamp = new Date().toLocaleTimeString();
+                    const speaker = $('#speaker option:selected').text();
+                    const shortenedText = segments[i].length > 7 ? segments[i].substring(0, 7) + '...' : segments[i];
+                    const requestInfo = `#${currentRequestId}(${i + 1}/${totalSegments})`;
+                    addHistoryItem(timestamp, speaker, shortenedText, blob, requestInfo);
+                    break; // 成功后立即退出重试循环
                 }
             } catch (error) {
                 retryCount++;
-                console.error(`分段 ${i + 1} 生成失败 (重试 ${retryCount}/${MAX_RETRIES}):`, error);
-                
-                if (retryCount === MAX_RETRIES) {
-                    showError(`第 ${i + 1}/${totalSegments} 段生成失败：${error.message}`);
-                } else {
+                if (retryCount < MAX_RETRIES) {
+                    console.error(`分段 ${i + 1} 生成失败 (重试 ${retryCount}/${MAX_RETRIES}):`, error);
                     // 重试前等待时间随重试次数增加
                     const waitTime = 3000 + (retryCount * 2000);
                     await new Promise(resolve => setTimeout(resolve, waitTime));
+                } else {
+                    showError(`第 ${i + 1}/${totalSegments} 段生成失败：${error.message}`);
                 }
             }
         }
