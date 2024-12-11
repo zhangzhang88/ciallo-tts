@@ -95,6 +95,36 @@ $(document).ready(function() {
             const currentLength = $(this).val().length;
             $('#charCount').text(`最多50000个字符，目前已输入${currentLength}个字符`);
         });
+
+        // 添加插入停顿功能
+        $('#insertPause').on('click', function() {
+            const seconds = parseFloat($('#pauseSeconds').val());
+            if (isNaN(seconds) || seconds < 0.01 || seconds > 100) {
+                showError('请输入0.01到100之间的数字');
+                return;
+            }
+            
+            const textarea = $('#text')[0];
+            const cursorPos = textarea.selectionStart;
+            const textBefore = textarea.value.substring(0, cursorPos);
+            const textAfter = textarea.value.substring(textarea.selectionEnd);
+            
+            // 插入停顿标记
+            const pauseTag = `<break time="${seconds}s"/>`;
+            textarea.value = textBefore + pauseTag + textAfter;
+            
+            // 恢复光标位置
+            const newPos = cursorPos + pauseTag.length;
+            textarea.setSelectionRange(newPos, newPos);
+            textarea.focus();
+        });
+
+        // 限制输入数字范围
+        $('#pauseSeconds').on('input', function() {
+            let value = parseFloat($(this).val());
+            if (value > 100) $(this).val(100);
+            if (value < 0.01 && value !== '') $(this).val(0.01);
+        });
     });
 });
 
