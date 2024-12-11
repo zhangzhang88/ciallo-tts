@@ -184,8 +184,20 @@ function generateVoice(isPreview) {
 
 const cachedAudio = new Map();
 
+function escapeXml(text) {
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+}
+
 async function makeRequest(url, isPreview, text, isDenoApi, requestId = '') {
     try {
+        // 转义文本中的特殊字符
+        const escapedText = escapeXml(text);
+        
         const response = await fetch(url, { 
             method: 'POST',
             headers: {
@@ -193,7 +205,7 @@ async function makeRequest(url, isPreview, text, isDenoApi, requestId = '') {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                text: text,
+                text: escapedText,
                 voice: $('#speaker').val(),
                 rate: parseInt($('#rate').val()),
                 pitch: parseInt($('#pitch').val()),
