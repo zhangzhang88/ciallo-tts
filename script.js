@@ -272,14 +272,17 @@ function addHistoryItem(timestamp, speaker, text, audioBlob, requestInfo = '') {
     const audioURL = URL.createObjectURL(audioBlob);
     cachedAudio.set(audioURL, audioBlob);
     
+    // 清理文本中的 SSML 标签
+    const cleanText = text.replace(/<break\s+time=["'](\d+(?:\.\d+)?[ms]s?)["']\s*\/>/g, '');
+    
     const historyItem = $(`
         <div class="history-item list-group-item" style="opacity: 0;">
             <div class="d-flex justify-content-between align-items-center">
-                <span class="text-truncate" style="max-width: 60%;">
+                <span class="text-truncate me-2" style="max-width: 70%;">
                     <strong class="text-primary">${requestInfo}</strong> 
-                    ${timestamp} - <span class="text-primary">${speaker}</span> - ${text}
+                    ${timestamp} - <span class="text-primary">${speaker}</span> - ${cleanText}
                 </span>
-                <div class="btn-group">
+                <div class="btn-group flex-shrink-0">
                     <button class="btn btn-sm btn-outline-primary play-btn" data-url="${audioURL}">
                         <i class="fas fa-play"></i>
                     </button>
