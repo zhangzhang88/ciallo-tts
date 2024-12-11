@@ -165,11 +165,6 @@ function generateVoice(isPreview) {
                 $('#result').show();
                 $('#audio').attr('src', currentAudioURL);
                 $('#download').attr('href', currentAudioURL);
-
-                const timestamp = new Date().toLocaleTimeString();
-                const speaker = $('#speaker option:selected').text();
-                const shortenedText = text.length > 5 ? text.substring(0, 5) + '...' : text;
-                addHistoryItem(timestamp, speaker, shortenedText, finalBlob);
             }
         }).finally(() => {
             $('#generateButton').prop('disabled', false);
@@ -311,7 +306,7 @@ function playAudio(audioURL) {
         return;
     }
     
-    // 重置所有按钮���标
+    // 重置所有按钮标
     allPlayButtons.html('<i class="fas fa-play"></i>');
     
     // 设置新的音频源并播放
@@ -491,7 +486,7 @@ function splitText(text, maxLength = 5000) {
                 }
             }
 
-            // 记录标点符号位置（不在括号内时）
+            // 记录标点符号位置（���在括号内时）
             if (punctuationMarks.includes(remainingText[i]) && bracketStack.length === 0) {
                 lastPunctuationIndex = i;
             }
