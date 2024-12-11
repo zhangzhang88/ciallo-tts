@@ -93,7 +93,7 @@ $(document).ready(function() {
 
         $('#text').on('input', function() {
             const currentLength = $(this).val().length;
-            $('#charCount').text(`最多25000个字符，目前已输入${currentLength}个字符`);
+            $('#charCount').text(`最多50000个字符，目前已输入${currentLength}个字符`);
         });
     });
 });
@@ -490,7 +490,7 @@ function splitText(text, maxLength = 2500) {
 }
 
 function showLoading(message) {
-    // 如果已经存在loading���示，则更新内容
+    // 如果已经存在loading示，则更新内容
     let loadingToast = $('.toast-loading');
     if (loadingToast.length) {
         loadingToast.find('.toast-body').html(`
