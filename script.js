@@ -224,7 +224,7 @@ async function makeRequest(url, isPreview, text, isDenoApi, requestId = '') {
         return blob;
     } catch (error) {
         console.error('请求错误:', error);
-        throw error; // 向上传递错误，让调用者处理重试逻辑
+        throw error;
     }
 }
 
@@ -626,11 +626,18 @@ async function generateVoiceForLongText(segments) {
 
     hideLoading();
 
-    if (results.length === 0) {
-        throw new Error('所有片段生成失败');
+    if (results.length > 0) {
+        const finalBlob = new Blob(results, { type: 'audio/mpeg' });
+        const timestamp = new Date().toLocaleTimeString();
+        const speaker = $('#speaker option:selected').text();
+        const shortenedText = text.length > 5 ? text.substring(0, 5) + '...' : text;
+        // 添加合并标记
+        const mergeRequestInfo = `#${currentRequestId}(合并)`;
+        addHistoryItem(timestamp, speaker, shortenedText, finalBlob, mergeRequestInfo);
+        return finalBlob;
     }
 
-    return new Blob(results, { type: 'audio/mpeg' });
+    throw new Error('所有片段生成失败');
 }
 
 // 在 body 末尾添加 toast 容器
