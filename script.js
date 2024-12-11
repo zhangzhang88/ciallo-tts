@@ -311,7 +311,7 @@ function playAudio(audioURL) {
         return;
     }
     
-    // 重置所有按钮图标
+    // 重置所有按钮���标
     allPlayButtons.html('<i class="fas fa-play"></i>');
     
     // 设置新的音频源并播放
@@ -457,7 +457,7 @@ function splitText(text, maxLength = 5000) {
             '{': '}',
             '"': '"',
             "'": "'",
-            '「': '」',
+            '「': '���',
             '『': '』'
         };
 
@@ -564,7 +564,10 @@ async function generateVoiceForLongText(segments) {
     requestCounter++;
     const currentRequestId = requestCounter;
     
-    // 只在开始时显示加载提示
+    // 获取原始文本的前几个字符用于显示
+    const originalText = $('#text').val();
+    const shortenedText = originalText.length > 7 ? originalText.substring(0, 7) + '...' : originalText;
+    
     showLoading('');
     
     let hasSuccessfulSegment = false;
@@ -579,7 +582,6 @@ async function generateVoiceForLongText(segments) {
             try {
                 const progress = ((i + 1) / totalSegments * 100).toFixed(1);
                 const retryInfo = retryCount > 0 ? `(重试 ${retryCount}/${MAX_RETRIES})` : '';
-                // 只使用 updateLoadingProgress 更新进度
                 updateLoadingProgress(progress, `正在生成第 ${i + 1}/${totalSegments} 段语音${retryInfo}...`);
                 
                 const blob = await makeRequest(
@@ -596,9 +598,9 @@ async function generateVoiceForLongText(segments) {
                     results.push(blob);
                     const timestamp = new Date().toLocaleTimeString();
                     const speaker = $('#speaker option:selected').text();
-                    const shortenedText = segments[i].length > 7 ? segments[i].substring(0, 7) + '...' : segments[i];
+                    const segmentText = segments[i].length > 7 ? segments[i].substring(0, 7) + '...' : segments[i];
                     const requestInfo = `#${currentRequestId}(${i + 1}/${totalSegments})`;
-                    addHistoryItem(timestamp, speaker, shortenedText, blob, requestInfo);
+                    addHistoryItem(timestamp, speaker, segmentText, blob, requestInfo);
                 }
             } catch (error) {
                 lastError = error;
@@ -618,7 +620,6 @@ async function generateVoiceForLongText(segments) {
             console.error(`分段 ${i + 1} 在 ${MAX_RETRIES} 次尝试后仍然失败:`, lastError);
         }
 
-        // 如果当前段落成功了，且还有下一段，则等待3秒
         if (success && i < segments.length - 1) {
             await new Promise(resolve => setTimeout(resolve, 3000));
         }
@@ -630,7 +631,6 @@ async function generateVoiceForLongText(segments) {
         const finalBlob = new Blob(results, { type: 'audio/mpeg' });
         const timestamp = new Date().toLocaleTimeString();
         const speaker = $('#speaker option:selected').text();
-        const shortenedText = text.length > 5 ? text.substring(0, 5) + '...' : text;
         // 添加合并标记
         const mergeRequestInfo = `#${currentRequestId}(合并)`;
         addHistoryItem(timestamp, speaker, shortenedText, finalBlob, mergeRequestInfo);
