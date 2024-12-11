@@ -541,9 +541,13 @@ function splitText(text, maxLength = 5000) {
             }
         }
 
-        // 优先在标点处分段，可以调整搜索范围
-        if (lastPunctuationIndex > 0 && lastPunctuationIndex > splitIndex - 300) {
-            splitIndex = lastPunctuationIndex + 1;
+        if (lastPunctuationIndex > 0) {
+            // 计算从 splitIndex 到 lastPunctuationIndex 的实际单位长度
+            const searchText = remainingText.substring(lastPunctuationIndex, splitIndex);
+            const unitLength = getTextLength(searchText);
+            if (unitLength <= 300) {
+                splitIndex = lastPunctuationIndex + 1;
+            }
         }
 
         segments.push(remainingText.substring(0, splitIndex));
