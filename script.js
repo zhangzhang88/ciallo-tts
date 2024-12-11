@@ -178,7 +178,9 @@ function generateVoice(isPreview) {
             if (blob) {
                 const timestamp = new Date().toLocaleTimeString();
                 const speaker = $('#speaker option:selected').text();
-                const shortenedText = text.length > 7 ? text.substring(0, 7) + '...' : text;
+                // 先清理 SSML 标签，再截取文本
+                const cleanText = text.replace(/<break\s+time=["'](\d+(?:\.\d+)?[ms]s?)["']\s*\/>/g, '');
+                const shortenedText = cleanText.length > 7 ? cleanText.substring(0, 7) + '...' : cleanText;
                 addHistoryItem(timestamp, speaker, shortenedText, blob, requestInfo);
             }
         });
