@@ -447,72 +447,124 @@ function showMessage(message, type = 'danger') {
 const SENTENCE_ENDINGS = /[.。！？!?]/;
 const PARAGRAPH_ENDINGS = /[\n\r]/;
 
+function getTextLength(str) {
+    // 移除 XML 标签，但记录停顿时间
+    let totalPauseTime = 0;
+    const textWithoutTags = str.replace(/<break\s+time="(\d+(?:\.\d+)?)(m?s)"\s*\/>/g, (match, time, unit) => {
+        const seconds = unit === 'ms' ? parseFloat(time) / 1000 : parseFloat(time);
+        totalPauseTime += seconds;
+        return '';
+    });
+
+    // 计算文本长度（中文2字符，英文1字符）
+    const textLength = textWithoutTags.split('').reduce((acc, char) => {
+        return acc + (char.charCodeAt(0) > 127 ? 2 : 1);
+    }, 0);
+
+    // 将停顿时间转换为等效字符长度（1秒 = 5.5个字符）
+    const pauseLength = Math.round(totalPauseTime * 5.5);
+
+    return textLength + pauseLength;
+}
+
 function splitText(text, maxLength = 2500) {
     const segments = [];
     let remainingText = text.trim();
 
-    // 计算实际字符长度（汉字=2，英文字母和其他字符=1）
     function getTextLength(str) {
-        return str.split('').reduce((acc, char) => {
-            // 使用 Unicode 范围判断是否为汉字
-            return acc + (/[\u4e00-\u9fa5]/.test(char) ? 2 : 1);
+        // 移除 XML 标签，但记录停顿时间
+        let totalPauseTime = 0;
+        const textWithoutTags = str.replace(/<break\s+time="(\d+(?:\.\d+)?)(m?s)"\s*\/>/g, (match, time, unit) => {
+            const seconds = unit === 'ms' ? parseFloat(time) / 1000 : parseFloat(time);
+            totalPauseTime += seconds;
+            return '';
+        });
+
+        // 计算文本长度（中文2字符，英文1字符）
+        const textLength = textWithoutTags.split('').reduce((acc, char) => {
+            return acc + (char.charCodeAt(0) > 127 ? 2 : 1);
         }, 0);
+
+        // 将停顿时间转换为等效字符长度（1秒 = 5.5个字符）
+        const pauseLength = Math.round(totalPauseTime * 5.5);
+
+        return textLength + pauseLength;
     }
 
     while (remainingText.length > 0) {
-        // 如果剩余文本的实际长度小于最大长度，直接添加
-        if (getTextLength(remainingText) <= maxLength * 2) {  // 将最大长度��2
+        if (getTextLength(remainingText) <= maxLength * 2) {
             segments.push(remainingText);
             break;
         }
 
-        let splitIndex = -1;
-        const searchStart = Math.max(maxLength - 300, 0);
-        const searchEnd = Math.min(maxLength + 200, remainingText.length);
-        
-        // 1. 优先寻找段落结束符（包括中英文标点）
-        const paragraphMatch = remainingText.slice(searchStart, searchEnd).match(/[！？!?.]\n|\n|。|！|？|!|\?|\./);
-        if (paragraphMatch) {
-            splitIndex = searchStart + paragraphMatch.index + 1;
-        }
+        // 基本标点符号
+        const punctuationMarks = [
+            '。', '！', '？', '；', '…', '，',  // 中文标点
+            '.', '!', '?', ';', ',',           // 英文标点
+            '\n', '\r\n'                       // 换行符
+        ];
 
-        // 2. 如果没找到合适的分割点，在最大长度处寻找句号
-        if (splitIndex === -1) {
-            const sentenceMatch = remainingText.slice(0, maxLength + 200).match(/[。！？!?.][^。！？!?.]*$/);
-            if (sentenceMatch) {
-                splitIndex = sentenceMatch.index + 1;
+        // 括号配对
+        const bracketPairs = {
+            '（': '）', 
+            '(': ')',
+            '【': '】',
+            '[': ']',
+            '{': '}',
+            '"': '"',
+            ''': ''',
+            '「': '」',
+            '『': '』'
+        };
+
+        let splitIndex = remainingText.length;
+        let currentLength = 0;
+        let lastPunctuationIndex = -1;
+        let inTag = false;
+        let bracketStack = [];
+
+        for (let i = 0; i < remainingText.length; i++) {
+            // 跳过 XML 标签内容
+            if (remainingText[i] === '<') {
+                inTag = true;
+                continue;
             }
-        }
-
-        // 3. 如果还是没找到，在最大长度处寻找逗号
-        if (splitIndex === -1) {
-            const commaMatch = remainingText.slice(maxLength - 200, maxLength + 200).match(/[,，]/);
-            if (commaMatch) {
-                splitIndex = maxLength - 200 + commaMatch.index + 1;
+            if (remainingText[i] === '>') {
+                inTag = false;
+                continue;
             }
-        }
+            if (inTag) continue;
 
-        // 4. 如果都没找到，在最大长度处分割，但要避免分割英文单词
-        if (splitIndex === -1) {
-            let currentLength = 0;
-            let i = 0;
-            // 累加字符长度直到达到最大长度
-            while (i < remainingText.length && currentLength < maxLength * 2) {
-                currentLength += /[\u4e00-\u9fa5]/.test(remainingText[i]) ? 2 : 1;
-                i++;
-            }
-            splitIndex = i;
-
-            // 避免分割英文单词
-            if (/[a-zA-Z]/.test(remainingText[splitIndex - 1]) && /[a-zA-Z]/.test(remainingText[splitIndex])) {
-                const lastSpace = remainingText.slice(0, splitIndex).lastIndexOf(' ');
-                if (lastSpace > splitIndex - 100) {
-                    splitIndex = lastSpace + 1;
+            // 处理括号配对
+            if (bracketPairs[remainingText[i]]) {
+                bracketStack.push({
+                    char: remainingText[i],
+                    index: i
+                });
+            } else if (Object.values(bracketPairs).includes(remainingText[i])) {
+                if (bracketStack.length > 0) {
+                    bracketStack.pop();
                 }
             }
+
+            // 记录标点符号位置（不在括号内时）
+            if (punctuationMarks.includes(remainingText[i]) && bracketStack.length === 0) {
+                lastPunctuationIndex = i;
+            }
+
+            currentLength += remainingText.charCodeAt(i) > 127 ? 2 : 1;
+            if (currentLength > maxLength * 2) {
+                splitIndex = i;
+                break;
+            }
         }
 
-        segments.push(remainingText.substring(0, splitIndex).trim());
+        // 优先在标点处分段（不在括号内）
+        if (lastPunctuationIndex > 0 && lastPunctuationIndex > splitIndex - 50) {
+            splitIndex = lastPunctuationIndex + 1;
+        }
+
+        segments.push(remainingText.substring(0, splitIndex));
         remainingText = remainingText.substring(splitIndex).trim();
     }
 
