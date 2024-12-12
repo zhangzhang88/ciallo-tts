@@ -155,9 +155,10 @@ function generateVoice(isPreview) {
 
     // 处理长文本
     const segments = splitText(text);
+    requestCounter++;
+    const currentRequestId = requestCounter;
+    
     if (segments.length > 1) {
-        requestCounter++;
-        const currentRequestId = requestCounter;
         showLoading(`正在生成#${currentRequestId}请求的 1/${segments.length} 段语音...`);
         generateVoiceForLongText(segments, currentRequestId).then(finalBlob => {
             if (finalBlob) {
@@ -175,9 +176,7 @@ function generateVoice(isPreview) {
             $('#previewButton').prop('disabled', false);
         });
     } else {
-        // 添加单段文本的加载提示，同时加上请求编号
-        requestCounter++;
-        const currentRequestId = requestCounter;
+        // 单段文本的加载提示
         showLoading(`正在生成#${currentRequestId}请求的语音...`);
         const requestInfo = `#${currentRequestId}(1/1)`;
         makeRequest(apiUrl, false, text, apiName === 'deno-api', requestInfo)
