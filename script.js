@@ -156,6 +156,7 @@ function generateVoice(isPreview) {
     // 处理长文本
     const segments = splitText(text);
     if (segments.length > 1) {
+        showLoading('正在生成长文本语音...');
         generateVoiceForLongText(segments).then(finalBlob => {
             if (finalBlob) {
                 if (currentAudioURL) {
@@ -167,23 +168,29 @@ function generateVoice(isPreview) {
                 $('#download').attr('href', currentAudioURL);
             }
         }).finally(() => {
+            hideLoading();
             $('#generateButton').prop('disabled', false);
             $('#previewButton').prop('disabled', false);
         });
     } else {
+        // 添加单段文本的加载提示
+        showLoading('正在生成语音...');
         requestCounter++;
         const currentRequestId = requestCounter;
         const requestInfo = `#${currentRequestId}(1/1)`;
-        makeRequest(apiUrl, false, text, apiName === 'deno-api', requestInfo).then(blob => {
-            if (blob) {
-                const timestamp = new Date().toLocaleTimeString();
-                const speaker = $('#speaker option:selected').text();
-                // 先清理 SSML 标签，再截取文本
-                const cleanText = text.replace(/<break\s+time=["'](\d+(?:\.\d+)?[ms]s?)["']\s*\/>/g, '');
-                const shortenedText = cleanText.length > 7 ? cleanText.substring(0, 7) + '...' : cleanText;
-                addHistoryItem(timestamp, speaker, shortenedText, blob, requestInfo);
-            }
-        });
+        makeRequest(apiUrl, false, text, apiName === 'deno-api', requestInfo)
+            .then(blob => {
+                if (blob) {
+                    const timestamp = new Date().toLocaleTimeString();
+                    const speaker = $('#speaker option:selected').text();
+                    const cleanText = text.replace(/<break\s+time=["'](\d+(?:\.\d+)?[ms]s?)["']\s*\/>/g, '');
+                    const shortenedText = cleanText.length > 7 ? cleanText.substring(0, 7) + '...' : cleanText;
+                    addHistoryItem(timestamp, speaker, shortenedText, blob, requestInfo);
+                }
+            })
+            .finally(() => {
+                hideLoading();
+            });
     }
 }
 
@@ -705,7 +712,7 @@ async function generateVoiceForLongText(segments) {
     throw new Error('所有片段生成失败');
 }
 
-// 在 body 末尾添加 toast 容���
+// 在 body 末尾添加 toast 容器
 $('body').append('<div class="toast-container"></div>');
 
 // 可以添加其他类型的消息提示
