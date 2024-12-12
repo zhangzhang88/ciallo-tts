@@ -2,6 +2,7 @@ let apiConfig;
 let lastRequestTime = 0;
 let currentAudioURL = null;
 let requestCounter = 0;
+let isGenerating = false;
 
 const API_CONFIG = {
     'workers-api': {
@@ -129,12 +130,11 @@ $(document).ready(function() {
 });
 
 function canMakeRequest() {
-    const currentTime = Date.now();
-    if (currentTime - lastRequestTime >= 3000) {
-        lastRequestTime = currentTime;
-        return true;
+    if (isGenerating) {
+        showError('请等待当前语音生成完成');
+        return false;
     }
-    return false;
+    return true;
 }
 
 function generateVoice(isPreview) {
@@ -152,6 +152,15 @@ function generateVoice(isPreview) {
         makeRequest(apiUrl, true, previewText, apiName === 'deno-api');
         return;
     }
+
+    if (!canMakeRequest()) {
+        return;
+    }
+
+    // 设置生成状态
+    isGenerating = true;
+    $('#generateButton').prop('disabled', true);
+    $('#previewButton').prop('disabled', true);
 
     // 处理长文本
     const segments = splitText(text);
@@ -172,11 +181,11 @@ function generateVoice(isPreview) {
             }
         }).finally(() => {
             hideLoading();
+            isGenerating = false;  // 重置生成状态
             $('#generateButton').prop('disabled', false);
             $('#previewButton').prop('disabled', false);
         });
     } else {
-        // 单段文本的加载提示
         showLoading(`正在生成#${currentRequestId}请求的语音...`);
         const requestInfo = `#${currentRequestId}(1/1)`;
         makeRequest(apiUrl, false, text, apiName === 'deno-api', requestInfo)
@@ -191,6 +200,9 @@ function generateVoice(isPreview) {
             })
             .finally(() => {
                 hideLoading();
+                isGenerating = false;  // 重置生成状态
+                $('#generateButton').prop('disabled', false);
+                $('#previewButton').prop('disabled', false);
             });
     }
 }
