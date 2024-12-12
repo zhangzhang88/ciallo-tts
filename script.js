@@ -156,8 +156,10 @@ function generateVoice(isPreview) {
     // 处理长文本
     const segments = splitText(text);
     if (segments.length > 1) {
-        showLoading('正在生成长文本语音...');
-        generateVoiceForLongText(segments).then(finalBlob => {
+        requestCounter++;
+        const currentRequestId = requestCounter;
+        showLoading(`正在生成#${currentRequestId}请求的 1/${segments.length} 段语音...`);
+        generateVoiceForLongText(segments, currentRequestId).then(finalBlob => {
             if (finalBlob) {
                 if (currentAudioURL) {
                     URL.revokeObjectURL(currentAudioURL);
@@ -173,10 +175,10 @@ function generateVoice(isPreview) {
             $('#previewButton').prop('disabled', false);
         });
     } else {
-        // 添加单段文本的加载提示
-        showLoading('正在生成语音...');
+        // 添加单段文本的加载提示，同时加上请求编号
         requestCounter++;
         const currentRequestId = requestCounter;
+        showLoading(`正在生成#${currentRequestId}请求的语音...`);
         const requestInfo = `#${currentRequestId}(1/1)`;
         makeRequest(apiUrl, false, text, apiName === 'deno-api', requestInfo)
             .then(blob => {
@@ -625,7 +627,7 @@ function updateLoadingProgress(progress, message) {
     }
 }
 
-async function generateVoiceForLongText(segments) {
+async function generateVoiceForLongText(segments, currentRequestId) {
     const results = [];
     const apiName = $('#api').val();
     const apiUrl = API_CONFIG[apiName].url;
@@ -652,7 +654,10 @@ async function generateVoiceForLongText(segments) {
             try {
                 const progress = ((i + 1) / totalSegments * 100).toFixed(1);
                 const retryInfo = retryCount > 0 ? `(重试 ${retryCount}/${MAX_RETRIES})` : '';
-                updateLoadingProgress(progress, `正在生成第 ${i + 1}/${totalSegments} 段语音${retryInfo}...`);
+                updateLoadingProgress(
+                    progress, 
+                    `正在生成#${currentRequestId}请求的 ${i + 1}/${totalSegments} 段语音${retryInfo}...`
+                );
                 
                 const blob = await makeRequest(
                     apiUrl, 
