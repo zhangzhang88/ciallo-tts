@@ -631,8 +631,6 @@ async function generateVoiceForLongText(segments, currentRequestId) {
     const apiName = $('#api').val();
     const apiUrl = API_CONFIG[apiName].url;
     const totalSegments = segments.length;
-    requestCounter++;
-    const currentRequestId = requestCounter;
     
     // 获取原始文本并清理 SSML 标签
     const originalText = $('#text').val();
