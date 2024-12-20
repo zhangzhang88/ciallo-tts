@@ -137,7 +137,7 @@ function canMakeRequest() {
     return true;
 }
 
-function generateVoice(isPreview) {
+async function generateVoice(isPreview) {
     const apiName = $('#api').val();
     const apiUrl = API_CONFIG[apiName].url;
     const text = $('#text').val().trim();
@@ -149,7 +149,20 @@ function generateVoice(isPreview) {
 
     if (isPreview) {
         const previewText = text.substring(0, 20);
-        makeRequest(apiUrl, true, previewText, apiName === 'deno-api');
+        try {
+            const blob = await makeRequest(apiUrl, true, previewText, apiName === 'deno-api');
+            if (blob) {
+                if (currentAudioURL) {
+                    URL.revokeObjectURL(currentAudioURL);
+                }
+                currentAudioURL = URL.createObjectURL(blob);
+                $('#result').show();
+                $('#audio').attr('src', currentAudioURL);
+                $('#download').attr('href', currentAudioURL);
+            }
+        } catch (error) {
+            showError('试听失败：' + error.message);
+        }
         return;
     }
 
