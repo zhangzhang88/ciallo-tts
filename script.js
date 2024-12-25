@@ -6,7 +6,8 @@ let isGenerating = false;
 
 const API_CONFIG = {
     'workers-api': {
-        url: 'https://1220.tts-api.zwei.de.eu.org/tts'
+        url: 'https://1220.tts-api.zwei.de.eu.org/tts',
+        authToken: 'your-key'
     },
     'deno-api': {
         url: 'https://deno-tts.api.zwei.de.eu.org/tts'
@@ -249,12 +250,20 @@ async function makeRequest(url, isPreview, text, isDenoApi, requestId = '') {
         // 转义文本中的特殊字符，但保护 SSML 标签
         const escapedText = escapeXml(text);
         
+        const apiName = $('#api').val();
+        const headers = {
+            'Accept': 'audio/mpeg',
+            'Content-Type': 'application/json'
+        };
+        
+        // 如果是 workers-api，添加认证头
+        if (apiName === 'workers-api') {
+            headers['x-auth-token'] = API_CONFIG[apiName].authToken;
+        }
+
         const response = await fetch(url, { 
             method: 'POST',
-            headers: {
-                'Accept': 'audio/mpeg',
-                'Content-Type': 'application/json'
-            },
+            headers: headers,
             body: JSON.stringify({
                 text: escapedText,
                 voice: $('#speaker').val(),
