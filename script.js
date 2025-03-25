@@ -142,6 +142,8 @@ async function generateVoice(isPreview) {
     const apiName = $('#api').val();
     const apiUrl = API_CONFIG[apiName].url;
     const text = $('#text').val().trim();
+    // 在开始生成时保存当前选择的讲述人名称
+    const currentSpeakerText = $('#speaker option:selected').text();
     
     if (!text) {
         showError('请输入要转换的文本');
@@ -183,7 +185,7 @@ async function generateVoice(isPreview) {
     
     if (segments.length > 1) {
         showLoading(`正在生成#${currentRequestId}请求的 1/${segments.length} 段语音...`);
-        generateVoiceForLongText(segments, currentRequestId).then(finalBlob => {
+        generateVoiceForLongText(segments, currentRequestId, currentSpeakerText).then(finalBlob => {
             if (finalBlob) {
                 if (currentAudioURL) {
                     URL.revokeObjectURL(currentAudioURL);
@@ -206,10 +208,10 @@ async function generateVoice(isPreview) {
             .then(blob => {
                 if (blob) {
                     const timestamp = new Date().toLocaleTimeString();
-                    const speaker = $('#speaker option:selected').text();
+                    // 使用保存的讲述人名称，而不是重新获取
                     const cleanText = text.replace(/<break\s+time=["'](\d+(?:\.\d+)?[ms]s?)["']\s*\/>/g, '');
                     const shortenedText = cleanText.length > 7 ? cleanText.substring(0, 7) + '...' : cleanText;
-                    addHistoryItem(timestamp, speaker, shortenedText, blob, requestInfo);
+                    addHistoryItem(timestamp, currentSpeakerText, shortenedText, blob, requestInfo);
                 }
             })
             .finally(() => {
@@ -660,7 +662,7 @@ function updateLoadingProgress(progress, message) {
     }
 }
 
-async function generateVoiceForLongText(segments, currentRequestId) {
+async function generateVoiceForLongText(segments, currentRequestId, currentSpeakerText) {
     const results = [];
     const apiName = $('#api').val();
     const apiUrl = API_CONFIG[apiName].url;
@@ -703,12 +705,11 @@ async function generateVoiceForLongText(segments, currentRequestId) {
                     success = true;
                     results.push(blob);
                     const timestamp = new Date().toLocaleTimeString();
-                    const speaker = $('#speaker option:selected').text();
-                    // 清理当前段的 SSML 标签
+                    // 使用传入的讲述人名称，而不是重新获取
                     const cleanSegmentText = segments[i].replace(/<break\s+time=["'](\d+(?:\.\d+)?[ms]s?)["']\s*\/>/g, '');
                     const shortenedSegmentText = cleanSegmentText.length > 7 ? cleanSegmentText.substring(0, 7) + '...' : cleanSegmentText;
                     const requestInfo = `#${currentRequestId}(${i + 1}/${totalSegments})`;
-                    addHistoryItem(timestamp, speaker, shortenedSegmentText, blob, requestInfo);
+                    addHistoryItem(timestamp, currentSpeakerText, shortenedSegmentText, blob, requestInfo);
                 }
             } catch (error) {
                 lastError = error;
@@ -738,10 +739,9 @@ async function generateVoiceForLongText(segments, currentRequestId) {
     if (results.length > 0) {
         const finalBlob = new Blob(results, { type: 'audio/mpeg' });
         const timestamp = new Date().toLocaleTimeString();
-        const speaker = $('#speaker option:selected').text();
-        // 使用之前清理过的文本
+        // 使用传入的讲述人名称，而不是重新获取
         const mergeRequestInfo = `#${currentRequestId}(合并)`;
-        addHistoryItem(timestamp, speaker, shortenedText, finalBlob, mergeRequestInfo);
+        addHistoryItem(timestamp, currentSpeakerText, shortenedText, finalBlob, mergeRequestInfo);
         return finalBlob;
     }
 
