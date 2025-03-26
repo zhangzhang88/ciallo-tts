@@ -7,7 +7,7 @@ let isGenerating = false;
 const API_CONFIG = {
     'workers-api': {
         url: 'https://1220.tts-api.zwei.de.eu.org/tts',
-        authToken: 'your-key'
+        authToken: 'bestZwei1225'
     },
     'deno-api': {
         url: 'https://deno-tts.api.zwei.de.eu.org/tts'
@@ -260,7 +260,11 @@ async function makeRequest(url, isPreview, text, isDenoApi, requestId = '') {
         
         // 如果是 workers-api，添加认证头
         if (apiName === 'workers-api') {
-            headers['x-auth-token'] = API_CONFIG[apiName].authToken;
+            const authToken = API_CONFIG[apiName].authToken;
+            if (!authToken || authToken === '请替换为您的实际API密钥') {
+                throw new Error('API密钥未正确配置');
+            }
+            headers['x-auth-token'] = authToken;
         }
 
         const response = await fetch(url, { 
@@ -274,6 +278,10 @@ async function makeRequest(url, isPreview, text, isDenoApi, requestId = '') {
                 preview: isPreview
             })
         });
+
+        if (response.status === 401) {
+            throw new Error('API认证失败，请检查API密钥设置');
+        }
 
         if (!response.ok) {
             throw new Error(`服务器响应错误: ${response.status}`);
@@ -298,6 +306,7 @@ async function makeRequest(url, isPreview, text, isDenoApi, requestId = '') {
         return blob;
     } catch (error) {
         console.error('请求错误:', error);
+        showError(error.message);
         throw error;
     }
 }
