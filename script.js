@@ -261,6 +261,7 @@ async function makeRequest(url, isPreview, text, isDenoApi, requestId = '') {
         // 如果是 workers-api，添加认证头
         if (apiName === 'workers-api') {
             const authToken = API_CONFIG[apiName].authToken;
+            console.log('使用的认证令牌:', authToken);  // 调试信息
             if (!authToken || authToken === '请替换为您的实际API密钥') {
                 throw new Error('API密钥未正确配置');
             }
@@ -302,6 +303,8 @@ async function makeRequest(url, isPreview, text, isDenoApi, requestId = '') {
                 .removeClass('disabled')
                 .attr('href', currentAudioURL);
         }
+
+        console.log('请求头:', headers);  // 打印完整请求头
 
         return blob;
     } catch (error) {
