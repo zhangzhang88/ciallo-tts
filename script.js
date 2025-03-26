@@ -268,10 +268,11 @@ async function makeRequest(url, isPreview, text, isDenoApi, requestId = '') {
             if (!authToken || authToken === '请替换为您的实际API密钥') {
                 throw new Error('API密钥未正确配置');
             }
+            // 修正认证头，确保其与服务端期望的格式一致
             headers['x-auth-token'] = authToken;
         }
 
-        const response = await fetch(url, { 
+        const requestOptions = {
             method: 'POST',
             headers: headers,
             body: JSON.stringify({
@@ -281,13 +282,20 @@ async function makeRequest(url, isPreview, text, isDenoApi, requestId = '') {
                 pitch: parseInt($('#pitch').val()),
                 preview: isPreview
             })
-        });
+        };
+
+        console.log('发送请求到:', url);
+        console.log('请求头:', JSON.stringify(headers));
+        
+        const response = await fetch(url, requestOptions);
 
         if (response.status === 401) {
+            console.error('认证失败，服务器返回 401');
             throw new Error('API认证失败，请检查API密钥设置');
         }
 
         if (!response.ok) {
+            console.error('服务器响应错误:', response.status, response.statusText);
             throw new Error(`服务器响应错误: ${response.status}`);
         }
 
