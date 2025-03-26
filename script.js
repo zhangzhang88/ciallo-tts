@@ -148,6 +148,8 @@ async function generateVoice(isPreview) {
     const text = $('#text').val().trim();
     // 在开始生成时保存当前选择的讲述人名称
     const currentSpeakerText = $('#speaker option:selected').text();
+    // 保存当前选择的讲述人ID，用于后续所有分段请求
+    const currentSpeakerId = $('#speaker').val();
     
     if (!text) {
         showError('请输入要转换的文本');
@@ -189,7 +191,7 @@ async function generateVoice(isPreview) {
     
     if (segments.length > 1) {
         showLoading(`正在生成#${currentRequestId}请求的 1/${segments.length} 段语音...`);
-        generateVoiceForLongText(segments, currentRequestId, currentSpeakerText).then(finalBlob => {
+        generateVoiceForLongText(segments, currentRequestId, currentSpeakerText, currentSpeakerId, apiUrl, apiName).then(finalBlob => {
             if (finalBlob) {
                 if (currentAudioURL) {
                     URL.revokeObjectURL(currentAudioURL);
@@ -208,7 +210,7 @@ async function generateVoice(isPreview) {
     } else {
         showLoading(`正在生成#${currentRequestId}请求的语音...`);
         const requestInfo = `#${currentRequestId}(1/1)`;
-        makeRequest(apiUrl, false, text, apiName === 'deno-api', requestInfo)
+        makeRequest(apiUrl, false, text, apiName === 'deno-api', requestInfo, currentSpeakerId)
             .then(blob => {
                 if (blob) {
                     const timestamp = new Date().toLocaleTimeString();
@@ -251,7 +253,7 @@ function escapeXml(text) {
     return tempText;
 }
 
-async function makeRequest(url, isPreview, text, isDenoApi, requestId = '') {
+async function makeRequest(url, isPreview, text, isDenoApi, requestId = '', speakerId = null) {
     try {
         // 转义文本中的特殊字符，但保护 SSML 标签
         const escapedText = escapeXml(text);
@@ -268,16 +270,19 @@ async function makeRequest(url, isPreview, text, isDenoApi, requestId = '') {
             if (!authToken || authToken === '请替换为您的实际API密钥') {
                 throw new Error('API密钥未正确配置');
             }
-            // 修正认证头，确保其与服务端期望的格式一致
+
             headers['x-auth-token'] = authToken;
         }
 
+        // 使用传入的speakerId（如果有）或者当前选择的speakerId
+        const voice = speakerId || $('#speaker').val();
+        
         const requestOptions = {
             method: 'POST',
             headers: headers,
             body: JSON.stringify({
                 text: escapedText,
-                voice: $('#speaker').val(),
+                voice: voice,
                 rate: parseInt($('#rate').val()),
                 pitch: parseInt($('#pitch').val()),
                 preview: isPreview
@@ -285,7 +290,6 @@ async function makeRequest(url, isPreview, text, isDenoApi, requestId = '') {
         };
 
         console.log('发送请求到:', url);
-        console.log('请求头:', JSON.stringify(headers));
         
         const response = await fetch(url, requestOptions);
 
@@ -683,10 +687,8 @@ function updateLoadingProgress(progress, message) {
     }
 }
 
-async function generateVoiceForLongText(segments, currentRequestId, currentSpeakerText) {
+async function generateVoiceForLongText(segments, currentRequestId, currentSpeakerText, currentSpeakerId, apiUrl, apiName) {
     const results = [];
-    const apiName = $('#api').val();
-    const apiUrl = API_CONFIG[apiName].url;
     const totalSegments = segments.length;
     
     // 获取原始文本并清理 SSML 标签
@@ -718,7 +720,8 @@ async function generateVoiceForLongText(segments, currentRequestId, currentSpeak
                     false, 
                     segments[i], 
                     apiName === 'deno-api', 
-                    `#${currentRequestId}(${i + 1}/${totalSegments})`
+                    `#${currentRequestId}(${i + 1}/${totalSegments})`,
+                    currentSpeakerId // 传递固定的讲述人ID
                 );
                 
                 if (blob) {
