@@ -51,6 +51,10 @@ function updateSliderLabel(sliderId, labelId) {
 }
 
 $(document).ready(function() {
+    // 确保默认API选择为workers-api
+    if ($('#api').length && !$('#api').val()) {
+        $('#api').val('workers-api');
+    }
     loadSpeakers().then(() => {
         $('#apiTips').text('使用 Workers API，每天限制 100000 次请求');
         
@@ -261,7 +265,6 @@ async function makeRequest(url, isPreview, text, isDenoApi, requestId = '') {
         // 如果是 workers-api，添加认证头
         if (apiName === 'workers-api') {
             const authToken = API_CONFIG[apiName].authToken;
-            console.log('使用的认证令牌:', authToken);  // 调试信息
             if (!authToken || authToken === '请替换为您的实际API密钥') {
                 throw new Error('API密钥未正确配置');
             }
@@ -303,8 +306,6 @@ async function makeRequest(url, isPreview, text, isDenoApi, requestId = '') {
                 .removeClass('disabled')
                 .attr('href', currentAudioURL);
         }
-
-        console.log('请求头:', headers);  // 打印完整请求头
 
         return blob;
     } catch (error) {
@@ -762,6 +763,15 @@ async function generateVoiceForLongText(segments, currentRequestId, currentSpeak
 
 // 在 body 末尾添加 toast 容器
 $('body').append('<div class="toast-container"></div>');
+
+// 可以添加其他类型的消息提示
+function showWarning(message) {
+    showMessage(message, 'warning');
+}
+
+function showInfo(message) {
+    showMessage(message, 'info');
+}
 
 // 可以添加其他类型的消息提示
 function showWarning(message) {
