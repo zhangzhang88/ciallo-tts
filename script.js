@@ -11,6 +11,9 @@ const API_CONFIG = {
     },
     'deno-api': {
         url: 'https://deno-tts.api.zwei.de.eu.org/tts'
+    },
+    'oai-tts': {
+        url: 'https://oai-tts.zwei.de.eu.org/v1/audio/speech'
     }
 };
 
@@ -71,11 +74,24 @@ $(document).ready(function() {
             updateSliderLabel('rate', 'rateValue');
             updateSliderLabel('pitch', 'pitchValue');
             
+            // 根据选择的API更新提示信息
             const tips = {
                 'workers-api': '使用 Workers API，每天限制 100000 次请求',
-                'deno-api': '使用 Deno API，基于 Lobe-TTS，暂不支持语速语调调整'
+                'deno-api': '使用 Deno API，基于 Lobe-TTS，暂不支持语速语调调整',
+                'oai-tts': '使用 OAI-TTS API，支持多种音频格式和情感调整'
             };
             $('#apiTips').text(tips[apiName] || '');
+            
+            // 根据API显示或隐藏instructions输入框
+            if (apiName === 'oai-tts') {
+                $('#instructionsContainer').show();
+                $('#formatContainer').show();
+                $('#rateContainer, #pitchContainer').hide();
+            } else {
+                $('#instructionsContainer').hide();
+                $('#formatContainer').hide();
+                $('#rateContainer, #pitchContainer').show();
+            }
         });
 
         updateSliderLabel('rate', 'rateValue');
@@ -277,21 +293,40 @@ async function makeRequest(url, isPreview, text, isDenoApi, requestId = '', spea
         // 使用传入的speakerId（如果有）或者当前选择的speakerId
         const voice = speakerId || $('#speaker').val();
         
-        const requestOptions = {
-            method: 'POST',
-            headers: headers,
-            body: JSON.stringify({
+        let requestBody;
+        
+        // 根据不同的API创建不同的请求体
+        if (apiName === 'oai-tts') {
+            const instructions = $('#instructions').val().trim();
+            const format = $('#audioFormat').val();
+            
+            requestBody = {
+                input: text,
+                voice: voice,
+                response_format: format
+            };
+            
+            // 只有当instructions不为空时才添加到请求体中
+            if (instructions) {
+                requestBody.instructions = instructions;
+            }
+        } else {
+            requestBody = {
                 text: escapedText,
                 voice: voice,
                 rate: parseInt($('#rate').val()),
                 pitch: parseInt($('#pitch').val()),
                 preview: isPreview
-            })
-        };
+            };
+        }
 
         console.log('发送请求到:', url);
         
-        const response = await fetch(url, requestOptions);
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(requestBody)
+        });
 
         if (response.status === 401) {
             console.error('认证失败，服务器返回 401');
@@ -317,6 +352,10 @@ async function makeRequest(url, isPreview, text, isDenoApi, requestId = '', spea
             $('#download')
                 .removeClass('disabled')
                 .attr('href', currentAudioURL);
+                
+            // 设置下载文件名
+            const audioFormat = apiName === 'oai-tts' ? $('#audioFormat').val() : 'mp3';
+            $('#download').attr('download', `voice.${audioFormat}`);
         }
 
         return blob;
@@ -714,6 +753,12 @@ async function generateVoiceForLongText(segments, currentRequestId, currentSpeak
                     progress, 
                     `正在生成#${currentRequestId}请求的 ${i + 1}/${totalSegments} 段语音${retryInfo}...`
                 );
+                
+                // 为OAI-TTS API使用相同的instructions
+                let instructions = null;
+                if (apiName === 'oai-tts') {
+                    instructions = $('#instructions').val().trim();
+                }
                 
                 const blob = await makeRequest(
                     apiUrl, 

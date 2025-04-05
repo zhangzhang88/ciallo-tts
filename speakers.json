@@ -618,6 +618,20 @@
             "zu-ZA-ThandoNeural": "Thando-祖鲁语（南非）",
             "zu-ZA-ThembaNeural": "Themba-祖鲁语（南非）"
         }
+    },
+    "oai-tts": {
+        "speakers": {
+            "alloy": "Alloy - 平衡中性",
+            "echo": "Echo - 高级人工智能",
+            "fable": "Fable - 英式语调",
+            "onyx": "Onyx - 威严有力",
+            "nova": "Nova - 温暖清晰",
+            "shimmer": "Shimmer - 轻快乐观",
+            "ash": "Ash - 中性平稳",
+            "coral": "Coral - 温暖活力",
+            "sage": "Sage - 睿智专业",
+            "ballad": "Ballad - 情感丰富",
+            "verse": "Verse - 饱满深沉"
+        }
     }
 }
-    
