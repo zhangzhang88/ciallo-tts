@@ -91,6 +91,11 @@ $(document).ready(function() {
                 $('#formatContainer').show();
                 $('#rateContainer, #pitchContainer').hide();
                 $('#pauseControls').hide(); // 隐藏停顿控制
+            } else if (apiName === 'deno-api') {
+                $('#instructionsContainer').hide();
+                $('#formatContainer').hide();
+                $('#rateContainer, #pitchContainer').hide(); // 隐藏语速语调控制
+                $('#pauseControls').show(); // 显示停顿控制
             } else {
                 $('#instructionsContainer').hide();
                 $('#formatContainer').hide();
@@ -313,7 +318,7 @@ async function makeRequest(url, isPreview, text, isDenoApi, requestId = '', spea
             const format = $('#audioFormat').val();
             
             requestBody = {
-                input: text, // 这里的text已经移除了停顿标签
+                input: text,
                 voice: voice,
                 response_format: format
             };
@@ -322,9 +327,15 @@ async function makeRequest(url, isPreview, text, isDenoApi, requestId = '', spea
             if (instructions) {
                 requestBody.instructions = instructions;
             }
+        } else if (apiName === 'deno-api') {
+            requestBody = {
+                text: text,
+                voice: voice,
+                preview: isPreview
+            };
         } else {
             requestBody = {
-                text: text, // 这里的text是经过escapeXml处理的，保留了停顿标签
+                text: text,
                 voice: voice,
                 rate: parseInt($('#rate').val()),
                 pitch: parseInt($('#pitch').val()),
