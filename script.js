@@ -81,19 +81,21 @@ $(document).ready(function() {
             const tips = {
                 'workers-api': '使用 Workers API，每天限制 100000 次请求',
                 'deno-api': '使用 Deno API，基于 Lobe-TTS，暂不支持语速语调调整',
-                'oai-tts': '使用 OAI-TTS API，支持多种音频格式和情感调整'
+                'oai-tts': '使用 OAI-TTS API，支持多种音频格式和情感调整，不支持停顿标签'
             };
             $('#apiTips').text(tips[apiName] || '');
             
-            // 根据API显示或隐藏instructions输入框
+            // 根据API显示或隐藏instructions输入框和停顿功能
             if (apiName === 'oai-tts') {
                 $('#instructionsContainer').show();
                 $('#formatContainer').show();
                 $('#rateContainer, #pitchContainer').hide();
+                $('#pauseControls').hide(); // 隐藏停顿控制
             } else {
                 $('#instructionsContainer').hide();
                 $('#formatContainer').hide();
                 $('#rateContainer, #pitchContainer').show();
+                $('#pauseControls').show(); // 显示停顿控制
             }
         });
 
@@ -274,10 +276,17 @@ function escapeXml(text) {
 
 async function makeRequest(url, isPreview, text, isDenoApi, requestId = '', speakerId = null) {
     try {
-        // 转义文本中的特殊字符，但保护 SSML 标签
-        const escapedText = escapeXml(text);
-        
+        // 获取当前API类型
         const apiName = $('#api').val();
+        
+        // 如果是OAI-TTS，移除所有的停顿标签
+        if (apiName === 'oai-tts') {
+            text = text.replace(/<break\s+time=["'](\d+(?:\.\d+)?[ms]s?)["']\s*\/>/g, '');
+        } else {
+            // 转义文本中的特殊字符，但保护 SSML 标签
+            text = escapeXml(text);
+        }
+        
         const headers = {
             'Accept': 'audio/mpeg',
             'Content-Type': 'application/json'
@@ -304,7 +313,7 @@ async function makeRequest(url, isPreview, text, isDenoApi, requestId = '', spea
             const format = $('#audioFormat').val();
             
             requestBody = {
-                input: text,
+                input: text, // 这里的text已经移除了停顿标签
                 voice: voice,
                 response_format: format
             };
@@ -315,7 +324,7 @@ async function makeRequest(url, isPreview, text, isDenoApi, requestId = '', spea
             }
         } else {
             requestBody = {
-                text: escapedText,
+                text: text, // 这里的text是经过escapeXml处理的，保留了停顿标签
                 voice: voice,
                 rate: parseInt($('#rate').val()),
                 pitch: parseInt($('#pitch').val()),
