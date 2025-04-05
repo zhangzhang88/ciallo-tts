@@ -79,9 +79,9 @@ $(document).ready(function() {
             
             // 根据选择的API更新提示信息
             const tips = {
-                'workers-api': '使用 Workers API，每天限制 100000 次请求',
-                'deno-api': '使用 Deno API，基于 Lobe-TTS，暂不支持语速语调调整',
-                'oai-tts': '使用 OAI-TTS API，支持多种音频格式和情感调整，不支持停顿标签'
+                'workers-api': 'Workers API 每天限制 100000 次请求',
+                'deno-api': 'Deno API，基于 Lobe-TTS，暂不支持语速语调调整',
+                'oai-tts': 'OpenAI-TTS 支持情感调整，不支持停顿标签'
             };
             $('#apiTips').text(tips[apiName] || '');
             
