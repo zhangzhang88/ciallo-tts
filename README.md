@@ -53,3 +53,7 @@ Ciallo TTS 是一款免费的在线文本转语音工具，支持多种声音选
 ├── script.js # 主要逻辑
 └── speakers.json # 讲述人配置
 ```
+
+## 赞助
+
+[NodeSupport](https://github.com/NodeSeekDev/NodeSupport?tab=readme-ov-file)
