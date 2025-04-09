@@ -14,7 +14,7 @@ const API_CONFIG = {
     },
     'oai-tts': {
         // 使用代理服务而不是直接访问
-        url: 'https://oai-tts.deno.dev/v1/audio/speech'
+        url: 'https://oai-tts.zwei.de.eu.org/v1/audio/speech'
         // 备用URL，可以在部署后替换
         // url: 'https://your-deno-proxy-url.deno.dev/v1/audio/speech'
     }
