@@ -9,7 +9,7 @@ const API_CONFIG = {
         url: '/api/tts'
     },
     'oai-tts': {
-        url: 'https://ttsapi.site/v1/audio/speech'
+        url: 'https://oai-tts-proxy.zwei.de.eu.org/v1/audio/speech'
     }
 };
 
