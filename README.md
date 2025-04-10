@@ -44,6 +44,8 @@ Ciallo TTS 是一款免费的在线文本转语音工具，支持多种声音选
 
 4. 点击 Deploy，等待部署完成
 
+[![Vercel一键部署](https://vercel.com/button)](https://vercel.com/import/git?s=https://github.com/bestZwei/ciallo-tts)
+
 ## 项目结构 
 
 ```

@@ -9,7 +9,7 @@ const API_CONFIG = {
         url: '/api/tts'
     },
     'oai-tts': {
-        url: 'https://oai-tts.zwei.de.eu.org/v1/audio/speech'
+        url: 'https://ttsapi.site/v1/audio/speech'
     }
 };
 
@@ -266,7 +266,7 @@ function escapeXml(text) {
     return tempText;
 }
 
-async function makeRequest(url, isPreview, text, isDenoApi, requestId = '', speakerId = null) {
+async function makeRequest(url, isPreview, text, requestId = '', speakerId = null) {
     try {
         // 获取当前API类型
         const apiName = $('#api').val();
