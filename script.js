@@ -55,7 +55,7 @@ $(document).ready(function() {
         $('#api').val('edge-api');
     }
     loadSpeakers().then(() => {
-        $('#apiTips').text('使用 Edge API，每天限制 100000 次请求');
+        $('#apiTips').text('Edge API 请求应该不限次数');
         
         // 初始化音频播放器
         initializeAudioPlayer();
@@ -72,7 +72,7 @@ $(document).ready(function() {
             
             // 根据选择的API更新提示信息
             const tips = {
-                'edge-api': 'Edge API 每天限制 100000 次请求',
+                'edge-api': 'Edge API 请求应该不限次数',
                 'oai-tts': 'OpenAI-TTS 支持情感调整，不支持停顿标签'
             };
             $('#apiTips').text(tips[apiName] || '');
