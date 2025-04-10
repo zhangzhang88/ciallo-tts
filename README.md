@@ -29,23 +29,6 @@ Ciallo TTS 是一款免费的在线文本转语音工具，支持多种声音选
 
 4. 部署完成后，你会获得一个 `xxx.pages.dev` 的域名
 
-### Vercel 部署
-
-1. Fork 本仓库到你的 GitHub 账号
-
-2. 登录 Vercel，点击 "New Project"
-
-3. 导入你 fork 的仓库：
-   - Framework Preset: 选择 "Other"
-   - Build Settings：
-     - Build Command: 留空
-     - Output Directory: `./`
-     - Install Command: 留空
-
-4. 点击 Deploy，等待部署完成
-
-[![Vercel一键部署](https://vercel.com/button)](https://vercel.com/import/git?s=https://github.com/bestZwei/ciallo-tts)
-
 ## 项目结构 
 
 ```
