@@ -172,7 +172,7 @@ async function generateVoice(isPreview) {
     if (isPreview) {
         const previewText = text.substring(0, 20);
         try {
-            const blob = await makeRequest(apiUrl, true, previewText, false);
+            const blob = await makeRequest(apiUrl, true, previewText, '', currentSpeakerId);
             if (blob) {
                 if (currentAudioURL) {
                     URL.revokeObjectURL(currentAudioURL);
@@ -223,7 +223,7 @@ async function generateVoice(isPreview) {
     } else {
         showLoading(`正在生成#${currentRequestId}请求的语音...`);
         const requestInfo = `#${currentRequestId}(1/1)`;
-        makeRequest(apiUrl, false, text, false, requestInfo, currentSpeakerId)
+        makeRequest(apiUrl, false, text, requestInfo, currentSpeakerId)
             .then(blob => {
                 if (blob) {
                     const timestamp = new Date().toLocaleTimeString();
@@ -266,7 +266,7 @@ function escapeXml(text) {
     return tempText;
 }
 
-async function makeRequest(url, isPreview, text, requestId = '', speakerId = null) {
+async function makeRequest(url, isPreview, text, requestInfo = '', speakerId = null) {
     try {
         // 获取当前API类型
         const apiName = $('#api').val();
@@ -295,8 +295,9 @@ async function makeRequest(url, isPreview, text, requestId = '', speakerId = nul
             const format = $('#audioFormat').val();
             
             requestBody = {
+                model: "tts-1",
                 input: text,
-                voice: voice,
+                voice: voice, // 确保这是正确的speaker ID
                 response_format: format
             };
             
@@ -304,6 +305,14 @@ async function makeRequest(url, isPreview, text, requestId = '', speakerId = nul
             if (instructions) {
                 requestBody.instructions = instructions;
             }
+            
+            // 记录OAI-TTS请求详情以便调试
+            console.log('OAI-TTS请求详情:', {
+                isPreview,
+                requestBody,
+                url,
+                speakerId: voice // 添加日志以确认使用的speakerId
+            });
         } else {
             requestBody = {
                 text: text,
@@ -322,9 +331,13 @@ async function makeRequest(url, isPreview, text, requestId = '', speakerId = nul
             body: JSON.stringify(requestBody)
         });
 
+        console.log('Fetch 已完成加载：' + response.status);
+
         if (!response.ok) {
-            console.error('服务器响应错误:', response.status, response.statusText);
-            throw new Error(`服务器响应错误: ${response.status}`);
+            // 增强错误信息，尝试获取响应内容
+            const errorText = await response.text().catch(() => '');
+            console.error('服务器响应错误:', response.status, response.statusText, errorText);
+            throw new Error(`服务器响应错误: ${response.status} - ${errorText || response.statusText}`);
         }
 
         const blob = await response.blob();
@@ -749,13 +762,14 @@ async function generateVoiceForLongText(segments, currentRequestId, currentSpeak
                     instructions = $('#instructions').val().trim();
                 }
                 
+                const requestInfo = `#${currentRequestId}(${i + 1}/${totalSegments})`;
+                
                 const blob = await makeRequest(
                     apiUrl, 
                     false, 
                     segments[i], 
-                    false,
-                    `#${currentRequestId}(${i + 1}/${totalSegments})`,
-                    currentSpeakerId // 传递固定的讲述人ID
+                    requestInfo,  // 传递requestInfo而不是把它用作voice参数
+                    currentSpeakerId  // 确保这是正确的speaker ID
                 );
                 
                 if (blob) {
