@@ -21,33 +21,6 @@ export async function onRequest(context) {
     });
   }
 
-  // Check if API_REFERER_RESTRICT is enabled and validate referer
-  if (context.env.API_REFERER_RESTRICT === 'true') {
-    const referer = request.headers.get('referer') || '';
-    const allowedHosts = (context.env.API_ALLOWED_HOSTS || '').split(',').map(h => h.trim()).filter(Boolean);
-    
-    // If there are allowed hosts specified, check if the referer matches any of them
-    if (allowedHosts.length > 0) {
-      const refererUrl = new URL(referer, 'http://localhost'); // Fallback URL to avoid errors
-      const refererHost = refererUrl.hostname;
-      
-      if (!allowedHosts.some(host => 
-        refererHost === host || 
-        refererHost.endsWith('.' + host)
-      )) {
-        return new Response(JSON.stringify({
-          error: "Access denied. Invalid referer."
-        }), {
-          status: 403,
-          headers: {
-            "Content-Type": "application/json",
-            ...makeCORSHeaders()
-          }
-        });
-      }
-    }
-  }
-
   try {
     // Handle API endpoints
     if (path === '/tts') {
