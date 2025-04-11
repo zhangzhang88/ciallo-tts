@@ -13,6 +13,25 @@ export default async function handler(req, res) {
     return res.status(204).end();
   }
 
+  // Check if API_REFERER_RESTRICT is enabled and validate referer
+  if (process.env.API_REFERER_RESTRICT === 'true') {
+    const referer = req.headers.referer || '';
+    const allowedHosts = (process.env.API_ALLOWED_HOSTS || '').split(',').map(h => h.trim()).filter(Boolean);
+    
+    // If there are allowed hosts specified, check if the referer matches any of them
+    if (allowedHosts.length > 0) {
+      const refererUrl = new URL(referer, 'http://localhost'); // Fallback URL to avoid errors
+      const refererHost = refererUrl.hostname;
+      
+      if (!allowedHosts.some(host => 
+        refererHost === host || 
+        refererHost.endsWith('.' + host)
+      )) {
+        return res.status(403).json({ error: "Access denied. Invalid referer." });
+      }
+    }
+  }
+
   try {
     if (req.method === "POST") {
       const body = req.body;
