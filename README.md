@@ -12,6 +12,23 @@ Ciallo TTS 是一款免费的在线文本转语音工具，支持多种声音选
 - 💾 支持音频下载
 - 📝 历史记录功能（最多保存50条）
 
+## API 说明
+
+本项目提供以下 API 端点:
+
+### Edge API 路径
+
+- `/api/tts` - 文本转语音 API
+  - 支持 GET/POST 方法
+  - GET 示例: `/api/tts?t=你好世界&v=zh-CN-XiaoxiaoNeural&r=0&p=0`
+  - POST 示例: 请求体为JSON格式 `{"text": "你好世界", "voice": "zh-CN-XiaoxiaoNeural", "rate": 0, "pitch": 0}`
+
+- `/api/voices` - 获取可用语音列表 API
+  - 仅支持 GET 方法
+  - 示例: `/api/voices?l=zh&f=1` (l参数用于筛选语言，f参数指定返回格式)
+
+默认情况下，API 允许跨域请求，可以被任何网站调用。
+
 ## 部署指南
 
 ### Vercel 部署
@@ -38,16 +55,3 @@ Ciallo TTS 是一款免费的在线文本转语音工具，支持多种声音选
      - 环境变量：无需设置
 
 4. 部署完成后，你会获得一个 `xxx.pages.dev` 的域名
-
-## 项目结构 
-
-```
-.
-├── index.html    # 主页面
-├── style.css     # 样式文件
-├── script.js     # 主要逻辑
-├── speakers.json # 讲述人配置
-└── api/          # API 端点
-    ├── tts.js    # TTS API
-    └── voices.js # 语音列表 API
-```
