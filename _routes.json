@@ -10,7 +10,7 @@
       },
       { 
         "pattern": "/api/voices", 
-        "function": "api/tts",
+        "function": "api/voices",
         "methods": ["GET", "OPTIONS"] 
       }
     ]
