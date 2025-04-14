@@ -50,22 +50,6 @@ function updateSliderLabel(sliderId, labelId) {
 }
 
 $(document).ready(function() {
-    // 新增：密码验证逻辑
-    if (window.SITE_PASSWORD && window.SITE_PASSWORD.trim() !== "" && localStorage.getItem("authenticated") !== "true") {
-        $("#passwordModal").show();
-        $("body").css("overflow", "hidden"); // 禁止页面滚动
-    }
-    $("#passwordSubmit").on("click", function(){
-        const input = $("#sitePasswordInput").val();
-        if(input === window.SITE_PASSWORD) {
-            localStorage.setItem("authenticated", "true");
-            $("#passwordModal").hide();
-            $("body").css("overflow", "");
-        } else {
-            alert("密码错误，请重试。");
-        }
-    });
-    
     // 确保默认API选择为edge-api
     if ($('#api').length && !$('#api').val()) {
         $('#api').val('edge-api');
