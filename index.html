@@ -42,6 +42,28 @@
     <link rel="preload" href="script.js" as="script">
 </head>
 <body>
+    <!-- 新增：密码验证模态框 -->
+    <div id="passwordModal" class="modal" tabindex="-1" role="dialog" style="display: none; position: fixed; top:0; left:0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1050;">
+      <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">请输入访问密码</h5>
+          </div>
+          <div class="modal-body">
+            <input type="password" id="sitePasswordInput" class="form-control" placeholder="输入密码">
+          </div>
+          <div class="modal-footer">
+            <button type="button" id="passwordSubmit" class="btn btn-primary">确认</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 注入环境变量（部署平台会替换 %SITE_PASSWORD%） -->
+    <script>
+      window.SITE_PASSWORD = "%SITE_PASSWORD%"; // 非空时启用密码保护
+    </script>
+
     <!-- 添加结构化数据 -->
     <script type="application/ld+json">
     {
