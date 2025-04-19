@@ -212,9 +212,10 @@ footer a:hover {
 /* 添加悬浮提示框样式 */
 .toast-container {
     position: fixed;
-    top: 20px;
-    right: 20px;
+    top: 1rem;
+    right: 1rem;
     z-index: 1050;
+    max-width: 300px;
 }
 
 .toast {
@@ -222,7 +223,7 @@ footer a:hover {
     background: rgba(255, 255, 255, 0.95);
     border-radius: 10px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    margin-bottom: 10px;
+    margin-bottom: 0.5rem;
     transition: all 0.3s ease;
     opacity: 0;
 }
@@ -267,4 +268,23 @@ footer a:hover {
 
 .toast-loading .fa-spinner {
     margin-right: 8px;
+}
+
+/* Loading overlay */
+#loadingOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.8);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+#loadingOverlay .spinner-border {
+    width: 3rem;
+    height: 3rem;
+    color: #6366f1;
 }

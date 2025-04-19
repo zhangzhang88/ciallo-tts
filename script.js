@@ -4,6 +4,10 @@ let currentAudioURL = null;
 let requestCounter = 0;
 let isGenerating = false;
 
+// Overlay controls
+function showOverlay() { $('#loadingOverlay').fadeIn(200); }
+function hideOverlay() { $('#loadingOverlay').fadeOut(200); }
+
 const API_CONFIG = {
     'edge-api': {
         url: '/api/tts'
@@ -156,6 +160,7 @@ function canMakeRequest() {
 }
 
 async function generateVoice(isPreview) {
+    showOverlay();
     const apiName = $('#api').val();
     const apiUrl = API_CONFIG[apiName].url;
     const text = $('#text').val().trim();
@@ -174,9 +179,7 @@ async function generateVoice(isPreview) {
         try {
             const blob = await makeRequest(apiUrl, true, previewText, '', currentSpeakerId);
             if (blob) {
-                if (currentAudioURL) {
-                    URL.revokeObjectURL(currentAudioURL);
-                }
+                if (currentAudioURL) URL.revokeObjectURL(currentAudioURL);
                 currentAudioURL = URL.createObjectURL(blob);
                 $('#result').show();
                 $('#audio').attr('src', currentAudioURL);
@@ -184,6 +187,8 @@ async function generateVoice(isPreview) {
             }
         } catch (error) {
             showError('试听失败：' + error.message);
+        } finally {
+            hideOverlay();
         }
         return;
     }
@@ -216,6 +221,7 @@ async function generateVoice(isPreview) {
             }
         }).finally(() => {
             hideLoading();
+            hideOverlay();
             isGenerating = false;  // 重置生成状态
             $('#generateButton').prop('disabled', false);
             $('#previewButton').prop('disabled', false);
@@ -235,6 +241,7 @@ async function generateVoice(isPreview) {
             })
             .finally(() => {
                 hideLoading();
+                hideOverlay();
                 isGenerating = false;  // 重置生成状态
                 $('#generateButton').prop('disabled', false);
                 $('#previewButton').prop('disabled', false);
