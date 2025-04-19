@@ -174,9 +174,7 @@ async function generateVoice(isPreview) {
         try {
             const blob = await makeRequest(apiUrl, true, previewText, '', currentSpeakerId);
             if (blob) {
-                if (currentAudioURL) {
-                    URL.revokeObjectURL(currentAudioURL);
-                }
+                if (currentAudioURL) URL.revokeObjectURL(currentAudioURL);
                 currentAudioURL = URL.createObjectURL(blob);
                 $('#result').show();
                 $('#audio').attr('src', currentAudioURL);
@@ -184,6 +182,8 @@ async function generateVoice(isPreview) {
             }
         } catch (error) {
             showError('试听失败：' + error.message);
+        } finally {
+            // Use existing loading toast hide instead of overlay
         }
         return;
     }
