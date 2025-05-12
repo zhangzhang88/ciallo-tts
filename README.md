@@ -11,6 +11,7 @@ Ciallo TTS 是一款免费的在线文本转语音工具，支持多种声音选
 - 📱 响应式设计，支持移动端
 - 💾 支持音频下载
 - 📝 历史记录功能（最多保存50条）
+- 🔌 支持添加自定义OpenAI格式的TTS API
 
 ## API 说明
 
@@ -26,6 +27,20 @@ Ciallo TTS 是一款免费的在线文本转语音工具，支持多种声音选
 - `/api/voices` - 获取可用语音列表 API
   - 仅支持 GET 方法
   - 示例: `/api/voices?l=zh&f=1` (l参数用于筛选语言，f参数指定返回格式)
+
+### 自定义 API
+
+Ciallo TTS 支持添加自定义的 OpenAI 格式 TTS API。您可以：
+
+1. 点击 API 选择框旁边的设置按钮
+2. 在弹出的管理页面中填写您的 API 信息
+3. 系统会自动从您提供的模型端点获取可用的语音模型
+
+自定义 API 需要符合 OpenAI 的 API 格式，一般需要提供：
+
+- API 端点 URL（例如：`https://api.example.com/v1/audio/speech`）
+- 模型列表端点（例如：`https://api.example.com/v1/models`）
+- API 密钥（如需要）
 
 默认情况下，API 允许跨域请求，可以被任何网站调用。
 

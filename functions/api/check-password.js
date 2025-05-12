@@ -1,8 +1,15 @@
 export async function onRequest(context) {
-  const { env } = context;
-  const envPass = env.PASSWORD || "";
-  return new Response(JSON.stringify({ requirePassword: !!envPass }), { 
-    status: 200, 
-    headers: { "Content-Type": "application/json" } 
-  });
+  const password = context.env.PASSWORD || '';
+  
+  return new Response(
+    JSON.stringify({
+      requirePassword: !!password
+    }),
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    }
+  );
 }

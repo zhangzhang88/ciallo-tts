@@ -13,6 +13,9 @@ const API_CONFIG = {
     }
 };
 
+// 在API_CONFIG对象之后添加
+let customAPIs = {};
+
 function loadSpeakers() {
     return $.ajax({
         url: 'speakers.json',
@@ -20,7 +23,15 @@ function loadSpeakers() {
         dataType: 'json',
         success: function(data) {
             apiConfig = data;
-            updateSpeakerOptions('edge-api');
+            
+            // 加载自定义API
+            loadCustomAPIs();
+            
+            // 更新API选择下拉菜单
+            updateApiOptions();
+            
+            // 设置默认API
+            updateSpeakerOptions($('#api').val());
         },
         error: function(jqXHR, textStatus, errorThrown) {
             console.error(`加载讲述者失败：${textStatus} - ${errorThrown}`);
@@ -29,14 +40,175 @@ function loadSpeakers() {
     });
 }
 
-function updateSpeakerOptions(apiName) {
-    const speakers = apiConfig[apiName].speakers;
-    const speakerSelect = $('#speaker');
-    speakerSelect.empty();
+// 加载自定义API配置
+function loadCustomAPIs() {
+    try {
+        const savedAPIs = localStorage.getItem('customAPIs');
+        if (savedAPIs) {
+            customAPIs = JSON.parse(savedAPIs);
+            
+            // 合并到API_CONFIG
+            Object.keys(customAPIs).forEach(apiId => {
+                API_CONFIG[apiId] = {
+                    url: customAPIs[apiId].endpoint,
+                    isCustom: true,
+                    apiKey: customAPIs[apiId].apiKey
+                };
+            });
+        }
+    } catch (error) {
+        console.error('加载自定义API失败:', error);
+    }
+}
+
+// 更新API选择下拉菜单
+function updateApiOptions() {
+    const apiSelect = $('#api');
     
-    Object.entries(speakers).forEach(([key, value]) => {
-        speakerSelect.append(new Option(value, key));
+    // 保存当前选择
+    const currentApi = apiSelect.val();
+    
+    // 清除除了内置选项之外的所有选项
+    apiSelect.find('option:not([value="edge-api"]):not([value="oai-tts"])').remove();
+    
+    // 添加自定义API选项
+    Object.keys(customAPIs).forEach(apiId => {
+        apiSelect.append(new Option(customAPIs[apiId].name, apiId));
     });
+    
+    // 如果之前选择的是有效的选项，则恢复选择
+    if (currentApi && (currentApi === 'edge-api' || currentApi === 'oai-tts' || customAPIs[currentApi])) {
+        apiSelect.val(currentApi);
+    }
+}
+
+// 更新讲述者选项列表
+async function updateSpeakerOptions(apiName) {
+    const speakerSelect = $('#speaker');
+    speakerSelect.empty().append(new Option('加载中...', ''));
+    
+    try {
+        // 检查是否是自定义API
+        if (customAPIs[apiName]) {
+            const speakers = await fetchCustomSpeakers(apiName);
+            speakerSelect.empty();
+            
+            Object.entries(speakers).forEach(([key, value]) => {
+                speakerSelect.append(new Option(value, key));
+            });
+        } else if (apiConfig[apiName]) {
+            // 使用预定义的speakers
+            const speakers = apiConfig[apiName].speakers;
+            speakerSelect.empty();
+            
+            Object.entries(speakers).forEach(([key, value]) => {
+                speakerSelect.append(new Option(value, key));
+            });
+        } else {
+            throw new Error(`未知的API: ${apiName}`);
+        }
+    } catch (error) {
+        console.error('加载讲述者失败:', error);
+        speakerSelect.empty().append(new Option('加载讲述者失败', ''));
+        showError(`加载讲述者失败: ${error.message}`);
+    }
+    
+    // 更新API提示信息
+    updateApiTipsText(apiName);
+}
+
+// 从自定义API获取讲述者
+async function fetchCustomSpeakers(apiId) {
+    const customApi = customAPIs[apiId];
+    if (!customApi || !customApi.modelEndpoint) {
+        return { 'default': '默认讲述者' };
+    }
+    
+    try {
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+        
+        // 如果有API密钥，添加授权头
+        if (customApi.apiKey) {
+            headers['Authorization'] = `Bearer ${customApi.apiKey}`;
+        }
+        
+        const response = await fetch(customApi.modelEndpoint, {
+            method: 'GET',
+            headers: headers
+        });
+        
+        if (!response.ok) {
+            throw new Error(`获取讲述者失败: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // 处理OpenAI格式的响应
+        if (data.data && Array.isArray(data.data)) {
+            const ttsModels = data.data.filter(model => 
+                model.id.startsWith('tts-') || 
+                ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'].includes(model.id)
+            );
+            
+            if (ttsModels.length === 0) {
+                return { 'default': '未找到TTS模型' };
+            }
+            
+            // 创建讲述者映射
+            const speakerMap = {};
+            ttsModels.forEach(model => {
+                speakerMap[model.id] = model.id;
+            });
+            
+            // 保存到apiConfig以便后续使用
+            if (!apiConfig[apiId]) {
+                apiConfig[apiId] = {};
+            }
+            apiConfig[apiId].speakers = speakerMap;
+            
+            return speakerMap;
+        } else {
+            // 如果响应格式不匹配预期
+            console.warn('API返回格式不是标准OpenAI格式:', data);
+            return { 'default': '自定义讲述者' };
+        }
+    } catch (error) {
+        console.error('获取自定义讲述者失败:', error);
+        return { 'error': `错误: ${error.message}` };
+    }
+}
+
+// 更新API提示文本
+function updateApiTipsText(apiName) {
+    const tips = {
+        'edge-api': 'Edge API 请求应该不限次数',
+        'oai-tts': 'OpenAI-TTS 支持情感调整，不支持停顿标签'
+    };
+    
+    // 如果是自定义API
+    if (customAPIs[apiName]) {
+        $('#apiTips').text(`自定义API: ${customAPIs[apiName].name} - 使用OpenAI格式`);
+    } else {
+        $('#apiTips').text(tips[apiName] || '');
+    }
+    
+    // 根据API类型调整界面
+    if (apiName === 'oai-tts' || customAPIs[apiName]) {
+        $('#instructionsContainer').show();
+        $('#formatContainer').show();
+        $('#rateContainer, #pitchContainer').hide();
+        $('#pauseControls').hide(); // 隐藏停顿控制
+    } else {
+        $('#instructionsContainer').hide();
+        $('#formatContainer').hide();
+        $('#rateContainer, #pitchContainer').show();
+        $('#pauseControls').show(); // 显示停顿控制
+    }
+    
+    // 更新字符限制提示文本
+    updateCharCountText();
 }
 
 function updateSliderLabel(sliderId, labelId) {
@@ -150,14 +322,139 @@ $(document).ready(function() {
             if (value < 0.01 && value !== '') $(this).val(0.01);
         });
     });
+    
+    // 添加自定义API管理功能
+    $('#manageApiBtn').on('click', function() {
+        // 加载已保存的API列表
+        refreshSavedApisList();
+        // 显示弹窗
+        $('#apiManagerModal').modal('show');
+    });
+    
+    // 自定义API表单提交
+    $('#customApiForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        const apiName = $('#apiName').val().trim();
+        const apiEndpoint = $('#apiEndpoint').val().trim();
+        const apiKey = $('#apiKey').val().trim();
+        const modelEndpoint = $('#modelEndpoint').val().trim();
+        
+        if (!apiName || !apiEndpoint) {
+            showError('API名称和端点不能为空');
+            return;
+        }
+        
+        // 生成API ID
+        const apiId = 'custom-' + Date.now();
+        
+        // 保存API配置
+        customAPIs[apiId] = {
+            name: apiName,
+            endpoint: apiEndpoint,
+            apiKey: apiKey,
+            modelEndpoint: modelEndpoint
+        };
+        
+        // 更新localStorage
+        localStorage.setItem('customAPIs', JSON.stringify(customAPIs));
+        
+        // 更新API_CONFIG
+        API_CONFIG[apiId] = {
+            url: apiEndpoint,
+            isCustom: true,
+            apiKey: apiKey
+        };
+        
+        // 更新API选择下拉列表
+        updateApiOptions();
+        
+        // 刷新保存的API列表
+        refreshSavedApisList();
+        
+        // 清空表单
+        $('#customApiForm')[0].reset();
+        
+        showInfo(`成功添加自定义API: ${apiName}`);
+    });
+    
+    // 初始API选择变更事件
+    $('#api').on('change', function() {
+        const apiName = $(this).val();
+        updateSpeakerOptions(apiName);
+        
+        // 根据选择的API更新提示信息
+        updateApiTipsText(apiName);
+    });
 });
+
+// 刷新保存的自定义API列表
+function refreshSavedApisList() {
+    const listContainer = $('#savedApisList');
+    listContainer.empty();
+    
+    if (Object.keys(customAPIs).length === 0) {
+        listContainer.append('<div class="alert alert-light">没有保存的自定义API</div>');
+        return;
+    }
+    
+    Object.keys(customAPIs).forEach(apiId => {
+        const api = customAPIs[apiId];
+        const item = $(`
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                    <h6>${api.name}</h6>
+                    <small class="text-muted">${api.endpoint}</small>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-sm btn-danger delete-api" data-api-id="${apiId}">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `);
+        
+        listContainer.append(item);
+    });
+    
+    // 添加删除API的事件处理程序
+    $('.delete-api').on('click', function() {
+        const apiId = $(this).data('api-id');
+        deleteCustomApi(apiId);
+    });
+}
+
+// 删除自定义API
+function deleteCustomApi(apiId) {
+    if (confirm(`确定要删除API "${customAPIs[apiId].name}"吗？`)) {
+        // 删除API
+        delete customAPIs[apiId];
+        delete API_CONFIG[apiId];
+        
+        // 更新localStorage
+        localStorage.setItem('customAPIs', JSON.stringify(customAPIs));
+        
+        // 刷新API列表
+        refreshSavedApisList();
+        
+        // 更新下拉列表
+        updateApiOptions();
+        
+        // 如果当前选中的是被删除的API，切换到edge-api
+        if ($('#api').val() === apiId) {
+            $('#api').val('edge-api').trigger('change');
+        }
+        
+        showInfo('自定义API已删除');
+    }
+}
 
 // 添加更新字符计数提示文本的函数
 function updateCharCountText() {
     const currentLength = $('#text').val().length;
     const apiName = $('#api').val();
     
-    if (apiName === 'oai-tts') {
+    if (apiName === 'oai-tts' || customAPIs[apiName]) {
         $('#charCount').text(`最多100个中文字符或约150个英文字符，目前已输入${currentLength}个字符`);
     } else {
         $('#charCount').text(`最多100000个字符，目前已输入${currentLength}个字符；长文本将智能分段生成语音。`);
@@ -287,18 +584,19 @@ async function makeRequest(url, isPreview, text, requestInfo = '', speakerId = n
     try {
         // 获取当前API类型
         const apiName = $('#api').val();
+        const isCustomApi = customAPIs[apiName];
         
-        // 如果是OAI-TTS，移除所有的停顿标签
-        if (apiName === 'oai-tts') {
+        // 如果是OAI-TTS或自定义API，移除所有的停顿标签
+        if (apiName === 'oai-tts' || isCustomApi) {
             text = text.replace(/<break\s+time=["'](\d+(?:\.\d+)?[ms]s?)["']\s*\/>/g, '');
             
-            // 对OAI-TTS添加文本长度验证
+            // 对OAI格式API添加文本长度验证
             const chineseChars = text.match(/[\u4e00-\u9fa5]/g) || [];
             const otherChars = text.length - chineseChars.length;
             const effectiveLength = chineseChars.length + otherChars / 1.5;
             
             if (effectiveLength > 100) {
-                throw new Error(`OAI-TTS API文本长度超限，最多支持100个中文字符或约150个英文字符，当前等效长度: ${Math.round(effectiveLength)}`);
+                throw new Error(`OpenAI格式API文本长度超限，最多支持100个中文字符或约150个英文字符，当前等效长度: ${Math.round(effectiveLength)}`);
             }
         } else {
             // 转义文本中的特殊字符，但保护 SSML 标签
@@ -314,16 +612,17 @@ async function makeRequest(url, isPreview, text, requestInfo = '', speakerId = n
         const voice = speakerId || $('#speaker').val();
         
         let requestBody;
+        let requestUrl = url;
         
         // 根据不同的API创建不同的请求体
-        if (apiName === 'oai-tts') {
+        if (apiName === 'oai-tts' || isCustomApi) {
             const instructions = $('#instructions').val().trim();
             const format = $('#audioFormat').val();
             
             requestBody = {
-                model: "tts-1",
+                model: voice, // 对于OpenAI格式API，voice是model
                 input: text,
-                voice: voice, // 确保这是正确的speaker ID
+                voice: isCustomApi ? "alloy" : voice, // 自定义API使用模型ID作为model参数，voice参数设置为默认值
                 response_format: format
             };
             
@@ -332,12 +631,18 @@ async function makeRequest(url, isPreview, text, requestInfo = '', speakerId = n
                 requestBody.instructions = instructions;
             }
             
-            // 记录OAI-TTS请求详情以便调试
-            console.log('OAI-TTS请求详情:', {
+            // 如果是自定义API且有apiKey，添加Authorization头
+            if (isCustomApi && customAPIs[apiName].apiKey) {
+                headers['Authorization'] = `Bearer ${customAPIs[apiName].apiKey}`;
+            }
+            
+            // 记录OAI格式请求详情以便调试
+            console.log('OpenAI格式请求详情:', {
                 isPreview,
                 requestBody,
-                url,
-                speakerId: voice // 添加日志以确认使用的speakerId
+                url: requestUrl,
+                speakerId: voice,
+                isCustomApi: !!isCustomApi
             });
         } else {
             requestBody = {
@@ -349,9 +654,9 @@ async function makeRequest(url, isPreview, text, requestInfo = '', speakerId = n
             };
         }
 
-        console.log('发送请求到:', url);
+        console.log('发送请求到:', requestUrl);
         
-        const response = await fetch(url, {
+        const response = await fetch(requestUrl, {
             method: 'POST',
             headers: headers,
             body: JSON.stringify(requestBody)
@@ -382,7 +687,7 @@ async function makeRequest(url, isPreview, text, requestInfo = '', speakerId = n
                 .attr('href', currentAudioURL);
                 
             // 设置下载文件名
-            const audioFormat = apiName === 'oai-tts' ? $('#audioFormat').val() : 'mp3';
+            const audioFormat = (apiName === 'oai-tts' || isCustomApi) ? $('#audioFormat').val() : 'mp3';
             $('#download').attr('download', `voice.${audioFormat}`);
         }
 
