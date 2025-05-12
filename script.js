@@ -171,35 +171,69 @@ async function fetchCustomSpeakers(apiId) {
         
         const data = await response.json();
         
-        // 处理OpenAI格式的响应
-        if (data.data && Array.isArray(data.data)) {
-            const ttsModels = data.data.filter(model => 
-                model.id.startsWith('tts-') || 
-                ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'].includes(model.id)
-            );
-            
-            if (ttsModels.length === 0) {
-                return { 'default': '未找到TTS模型' };
+        // 处理不同API格式的响应
+        if (customApi.format === 'openai') {
+            // 处理OpenAI格式的响应
+            if (data.data && Array.isArray(data.data)) {
+                const ttsModels = data.data.filter(model => 
+                    model.id.startsWith('tts-') || 
+                    ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'].includes(model.id)
+                );
+                
+                if (ttsModels.length === 0) {
+                    return { 'default': '未找到TTS模型' };
+                }
+                
+                // 创建讲述者映射
+                const speakerMap = {};
+                ttsModels.forEach(model => {
+                    speakerMap[model.id] = model.id;
+                });
+                
+                // 保存到apiConfig以便后续使用
+                if (!apiConfig[apiId]) {
+                    apiConfig[apiId] = {};
+                }
+                apiConfig[apiId].speakers = speakerMap;
+                
+                return speakerMap;
             }
-            
-            // 创建讲述者映射
-            const speakerMap = {};
-            ttsModels.forEach(model => {
-                speakerMap[model.id] = model.id;
-            });
-            
-            // 保存到apiConfig以便后续使用
-            if (!apiConfig[apiId]) {
-                apiConfig[apiId] = {};
-            }
-            apiConfig[apiId].speakers = speakerMap;
-            
-            return speakerMap;
         } else {
-            // 如果响应格式不匹配预期
-            console.warn('API返回格式不是标准OpenAI格式:', data);
-            return { 'default': '自定义讲述者' };
+            // 处理Edge格式的响应
+            // 尝试不同的格式解析
+            if (Array.isArray(data)) {
+                if (data.length > 0 && data[0].ShortName) {
+                    // 标准的Edge API格式
+                    const speakerMap = {};
+                    data.forEach(item => {
+                        speakerMap[item.ShortName] = item.LocalName || item.DisplayName || item.ShortName;
+                    });
+                    
+                    // 保存到apiConfig
+                    if (!apiConfig[apiId]) {
+                        apiConfig[apiId] = {};
+                    }
+                    apiConfig[apiId].speakers = speakerMap;
+                    
+                    return speakerMap;
+                } else {
+                    // 其他数组格式，尝试解析
+                    const speakerMap = {};
+                    data.forEach(item => {
+                        const id = item.id || item.name || item.code || item;
+                        speakerMap[id] = item.displayName || item.description || id;
+                    });
+                    return speakerMap;
+                }
+            } else if (typeof data === 'object') {
+                // 可能是直接的键值对格式 {shortName: displayName}
+                return data;
+            }
         }
+        
+        // 如果响应格式不匹配预期
+        console.warn('API返回格式无法识别:', data);
+        return { 'default': '自定义讲述者' };
     } catch (error) {
         console.error('获取自定义讲述者失败:', error);
         return { 'error': `错误: ${error.message}` };
@@ -383,40 +417,61 @@ $(document).ready(function() {
         try {
             const headers = {'Content-Type':'application/json'};
             if (key) headers['Authorization'] = `Bearer ${key}`;
-            const res = await fetch(modelUrl, {method:'GET', headers});
-            if (!res.ok) throw new Error(res.statusText);
-            const data = await res.json();
             
-            let models = [];
             if (format === 'openai') {
-                // OpenAI 格式处理
+                // 已有的OpenAI逻辑
+                const res = await fetch(modelUrl, {method:'GET', headers});
+                if (!res.ok) throw new Error(res.statusText);
+                const data = await res.json();
+                
+                let models = [];
                 if (data.data && Array.isArray(data.data)) {
                     models = data.data
                         .filter(m => m.id.startsWith('tts-') || 
                             ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'].includes(m.id))
                         .map(m => m.id);
                 }
-            } else {
-                // Edge API 格式处理
-                if (Array.isArray(data)) {
-                    // 完整格式 (返回整个voices数组)
-                    models = data.map(voice => voice.ShortName);
-                } else if (data && typeof data === 'object' && !Array.isArray(data)) {
-                    // 对象格式 (格式为 {ShortName: LocalName})
-                    models = Object.keys(data);
+                
+                if (models.length > 0) {
+                    $('#manualSpeakers').val(models.join(','));
+                    showInfo(`成功获取到 ${models.length} 个OpenAI模型`);
+                } else {
+                    showWarning('未找到可用的TTS模型，请确认API格式是否正确');
                 }
-            }
-            
-            if (models.length > 0) {
-                $('#manualSpeakers').val(models.join(','));
-                showInfo(`成功获取到 ${models.length} 个模型`);
             } else {
-                showWarning('未找到可用的模型，请确认API格式和端点是否正确');
+                // Edge API格式获取讲述人列表
+                // 优先尝试 /voices 端点
+                const res = await fetch(modelUrl, {method:'GET', headers});
+                if (!res.ok) throw new Error(`讲述人请求失败: ${res.status}`);
+                const data = await res.json();
+                
+                let speakers = [];
+                
+                // 检查是否是标准 Edge API 格式
+                if (Array.isArray(data)) {
+                    if (data.length > 0 && data[0].ShortName) {
+                        // 标准的 Edge API /voices 响应
+                        speakers = data.map(s => s.ShortName);
+                    } else {
+                        // 其他数组格式
+                        speakers = data.map(s => s.id || s.name || s.code || s);
+                    }
+                } else if (typeof data === 'object') {
+                    // 可能是键值对格式 {shortName: displayName}
+                    speakers = Object.keys(data);
+                }
+                
+                if (speakers.length > 0) {
+                    $('#manualSpeakers').val(speakers.join(','));
+                    showInfo(`成功获取到 ${speakers.length} 个讲述人`);
+                } else {
+                    showWarning('未能识别讲述人列表格式，请手动输入');
+                }
             }
         } catch (e) {
             showError('获取模型失败: ' + e.message);
         } finally {
-            $(this).prop('disabled', false).html('获取模型');
+            $(this).prop('disabled', false).html(format === 'openai' ? '获取OpenAI模型' : '获取Edge讲述人');
         }
     });
 
@@ -1280,13 +1335,15 @@ function updateApiFormPlaceholders(format) {
         $('#manualSpeakers').attr('placeholder', 'alloy,echo,fable,onyx,nova,shimmer');
         $('#openaiFields').show();
         $('#speakersHint').text('OpenAI格式API支持从模型端点获取模型列表');
+        $('#fetchModelsBtn').text('获取OpenAI模型');
     } else {
         $('#apiEndpoint').attr('placeholder', 'https://your-edge-api.com/api/tts');
         $('#modelEndpoint').attr('placeholder', 'https://your-edge-api.com/api/voices');
         $('#apiKey').attr('placeholder', '可选的API密钥');
         $('#manualSpeakers').attr('placeholder', 'zh-CN-XiaoxiaoNeural,en-US-AriaNeural');
-        $('#openaiFields').show(); // 显示modelEndpoint字段，以便Edge API也能获取模型
-        $('#speakersHint').text('Edge格式API也支持从模型端点获取讲述人');
+        $('#openaiFields').show(); // 保持显示模型端点字段
+        $('#speakersHint').text('Edge格式API可以获取可用的讲述人列表');
+        $('#fetchModelsBtn').text('获取Edge讲述人');
     }
 }
 
