@@ -371,6 +371,8 @@ $(document).ready(function() {
         const endpoint = $('#apiEndpoint').val().trim();
         const key = $('#apiKey').val().trim();
         const modelUrl = $('#modelEndpoint').val().trim();
+        const format = $('#apiFormat').val();
+        
         if (!endpoint || !modelUrl) {
             showError('请先填写 API 端点和模型列表端点');
             return;
@@ -386,22 +388,30 @@ $(document).ready(function() {
             const data = await res.json();
             
             let models = [];
-            if (data.data && Array.isArray(data.data)) {
-                // OpenAI 格式
-                models = data.data
-                    .filter(m => m.id.startsWith('tts-') || 
-                        ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'].includes(m.id))
-                    .map(m => m.id);
-            } else if (Array.isArray(data)) {
-                // 其他可能的格式
-                models = data.map(m => m.id || m.ShortName || m.name || m);
+            if (format === 'openai') {
+                // OpenAI 格式处理
+                if (data.data && Array.isArray(data.data)) {
+                    models = data.data
+                        .filter(m => m.id.startsWith('tts-') || 
+                            ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'].includes(m.id))
+                        .map(m => m.id);
+                }
+            } else {
+                // Edge API 格式处理
+                if (Array.isArray(data)) {
+                    // 完整格式 (返回整个voices数组)
+                    models = data.map(voice => voice.ShortName);
+                } else if (data && typeof data === 'object' && !Array.isArray(data)) {
+                    // 对象格式 (格式为 {ShortName: LocalName})
+                    models = Object.keys(data);
+                }
             }
             
             if (models.length > 0) {
                 $('#manualSpeakers').val(models.join(','));
                 showInfo(`成功获取到 ${models.length} 个模型`);
             } else {
-                showWarning('未找到可用的TTS模型，请确认API格式是否正确');
+                showWarning('未找到可用的模型，请确认API格式和端点是否正确');
             }
         } catch (e) {
             showError('获取模型失败: ' + e.message);
@@ -1275,8 +1285,8 @@ function updateApiFormPlaceholders(format) {
         $('#modelEndpoint').attr('placeholder', 'https://your-edge-api.com/api/voices');
         $('#apiKey').attr('placeholder', '可选的API密钥');
         $('#manualSpeakers').attr('placeholder', 'zh-CN-XiaoxiaoNeural,en-US-AriaNeural');
-        $('#openaiFields').hide();
-        $('#speakersHint').text('Edge格式API需要手动输入可用的讲述人');
+        $('#openaiFields').show(); // 显示modelEndpoint字段，以便Edge API也能获取模型
+        $('#speakersHint').text('Edge格式API也支持从模型端点获取讲述人');
     }
 }
 
