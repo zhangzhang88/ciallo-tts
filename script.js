@@ -1501,3 +1501,35 @@ function updateApiFormPlaceholders(format) {
         $('#manualSpeakers').attr('placeholder', 'zh-CN-XiaoxiaoNeural,en-US-AriaNeural,...');
     }
 }
+
+// 添加删除自定义API的函数
+function deleteCustomApi(apiId) {
+    if (!customAPIs[apiId]) {
+        showError('找不到要删除的API');
+        return;
+    }
+    
+    const apiName = customAPIs[apiId].name;
+    
+    if (confirm(`确定要删除自定义API「${apiName}」吗？`)) {
+        // 删除自定义API
+        delete customAPIs[apiId];
+        delete API_CONFIG[apiId];
+        
+        // 保存到localStorage
+        localStorage.setItem('customAPIs', JSON.stringify(customAPIs));
+        
+        // 更新API选项
+        updateApiOptions();
+        
+        // 如果当前选中的是被删除的API，切换到edge-api
+        if ($('#api').val() === apiId) {
+            $('#api').val('edge-api').trigger('change');
+        }
+        
+        // 刷新API列表
+        refreshSavedApisList();
+        
+        showInfo(`已删除API: ${apiName}`);
+    }
+}
