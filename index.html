@@ -242,7 +242,28 @@
                         </div>
                         <div class="form-group">
                             <label for="modelEndpoint">模型列表端点 <small class="text-muted">(用于获取可用的模型/讲述人)</small></label>
-                            <input type="url" class="form-control" id="modelEndpoint" placeholder="https://api.example.com/v1/models">
+                            <div class="input-group">
+                                <input type="url" class="form-control" id="modelEndpoint" placeholder="https://api.example.com/v1/models">
+                                <div class="input-group-append">
+                                    <button class="btn btn-sm btn-outline-secondary" type="button" id="fetchModelsBtn">获取模型</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="apiFormat">请求格式</label>
+                            <select id="apiFormat" class="form-control">
+                                <option value="openai">OpenAI 格式</option>
+                                <option value="edge">Edge API 格式</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="manualSpeakers">自定义讲述人列表 <small class="text-muted">(逗号分隔)</small></label>
+                            <textarea id="manualSpeakers" class="form-control" rows="2" placeholder="voice1,voice2,voice3"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="maxLength">最大请求长度</label>
+                            <input type="number" id="maxLength" class="form-control" placeholder="例如: 5000">
+                            <small class="form-text text-muted">此 API 文本最大字符数限制</small>
                         </div>
                         <button type="submit" class="btn btn-primary">添加API</button>
                     </form>
@@ -251,6 +272,7 @@
                     <h6>已保存的自定义API</h6>
                     <div id="savedApisList" class="list-group mt-3">
                         <!-- 动态加载已保存的API -->
+                        <!-- 在 script.js 中生成的项需包含“编辑”按钮 -->
                     </div>
                 </div>
                 <div class="modal-footer">

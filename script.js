@@ -15,6 +15,7 @@ const API_CONFIG = {
 
 // 在API_CONFIG对象之后添加
 let customAPIs = {};
+let editingApiId = null;
 
 function loadSpeakers() {
     return $.ajax({
@@ -52,7 +53,10 @@ function loadCustomAPIs() {
                 API_CONFIG[apiId] = {
                     url: customAPIs[apiId].endpoint,
                     isCustom: true,
-                    apiKey: customAPIs[apiId].apiKey
+                    apiKey: customAPIs[apiId].apiKey,
+                    format: customAPIs[apiId].format,
+                    manual: customAPIs[apiId].manual,
+                    maxLength: customAPIs[apiId].maxLength
                 };
             });
         }
@@ -90,12 +94,12 @@ async function updateSpeakerOptions(apiName) {
     try {
         // 检查是否是自定义API
         if (customAPIs[apiName]) {
-            const speakers = await fetchCustomSpeakers(apiName);
-            speakerSelect.empty();
-            
-            Object.entries(speakers).forEach(([key, value]) => {
-                speakerSelect.append(new Option(value, key));
-            });
+            const list = customAPIs[apiName].manual || [];
+            if (list.length) {
+                list.forEach(v => speakerSelect.append(new Option(v, v)));
+            } else {
+                speakerSelect.append(new Option('请先获取模型或手动输入', ''));
+            }
         } else if (apiConfig[apiName]) {
             // 使用预定义的speakers
             const speakers = apiConfig[apiName].speakers;
@@ -325,59 +329,100 @@ $(document).ready(function() {
     
     // 添加自定义API管理功能
     $('#manageApiBtn').on('click', function() {
-        // 加载已保存的API列表
+        editingApiId = null;
+        $('#customApiForm')[0].reset();
+        $('#apiFormat').val('openai');
+        $('#manualSpeakers').val('');
+        $('#maxLength').val('');
         refreshSavedApisList();
-        // 显示弹窗
         $('#apiManagerModal').modal('show');
     });
     
-    // 自定义API表单提交
-    $('#customApiForm').on('submit', function(e) {
-        e.preventDefault();
-        
-        const apiName = $('#apiName').val().trim();
-        const apiEndpoint = $('#apiEndpoint').val().trim();
-        const apiKey = $('#apiKey').val().trim();
-        const modelEndpoint = $('#modelEndpoint').val().trim();
-        
-        if (!apiName || !apiEndpoint) {
-            showError('API名称和端点不能为空');
+    $('#fetchModelsBtn').on('click', async function() {
+        const endpoint = $('#apiEndpoint').val().trim();
+        const key = $('#apiKey').val().trim();
+        const modelUrl = $('#modelEndpoint').val().trim();
+        if (!endpoint || !modelUrl) {
+            showError('请先填写 API 端点和模型列表端点');
             return;
         }
-        
-        // 生成API ID
-        const apiId = 'custom-' + Date.now();
-        
-        // 保存API配置
-        customAPIs[apiId] = {
-            name: apiName,
-            endpoint: apiEndpoint,
-            apiKey: apiKey,
-            modelEndpoint: modelEndpoint
-        };
-        
-        // 更新localStorage
-        localStorage.setItem('customAPIs', JSON.stringify(customAPIs));
-        
-        // 更新API_CONFIG
-        API_CONFIG[apiId] = {
-            url: apiEndpoint,
-            isCustom: true,
-            apiKey: apiKey
-        };
-        
-        // 更新API选择下拉列表
-        updateApiOptions();
-        
-        // 刷新保存的API列表
-        refreshSavedApisList();
-        
-        // 清空表单
-        $('#customApiForm')[0].reset();
-        
-        showInfo(`成功添加自定义API: ${apiName}`);
+        try {
+            const headers = {'Content-Type':'application/json'};
+            if (key) headers['Authorization'] = `Bearer ${key}`;
+            const res = await fetch(modelUrl, {method:'GET', headers});
+            if (!res.ok) throw new Error(res.statusText);
+            const data = await res.json();
+            const models = (data.data||data).map(m=>m.id||m.ShortName);
+            $('#manualSpeakers').val(models.join(','));
+            showInfo('模型列表已填充到“自定义讲述人列表”');
+        } catch (e) {
+            showError('获取模型失败: '+e.message);
+        }
     });
-    
+
+    $('#customApiForm').on('submit', function(e) {
+        e.preventDefault();
+        const name = $('#apiName').val().trim();
+        const endpoint = $('#apiEndpoint').val().trim();
+        if (!name || !endpoint) { showError('API 名称和端点不能为空'); return; }
+        const key = $('#apiKey').val().trim();
+        const modelEndpoint = $('#modelEndpoint').val().trim();
+        const format = $('#apiFormat').val();
+        const manual = $('#manualSpeakers').val().split(',').map(s=>s.trim()).filter(Boolean);
+        const maxLen = parseInt($('#maxLength').val()) || null;
+        const id = editingApiId || ('custom-' + Date.now());
+        customAPIs[id] = { name, endpoint, apiKey:key, modelEndpoint, format, manual, maxLength: maxLen };
+        localStorage.setItem('customAPIs', JSON.stringify(customAPIs));
+        API_CONFIG[id] = { url:endpoint, isCustom:true, apiKey:key, format, manual, maxLength: maxLen };
+        updateApiOptions();
+        refreshSavedApisList();
+        $('#customApiForm')[0].reset();
+        editingApiId = null;
+        showInfo(`自定义API ${editingApiId? '已更新':'已添加'}: ${name}`);
+    });
+
+    function refreshSavedApisList() {
+        const list = $('#savedApisList').empty();
+        if (!Object.keys(customAPIs).length) {
+            list.append('<div class="alert alert-light">没有保存的自定义API</div>');
+            return;
+        }
+        Object.entries(customAPIs).forEach(([id, api]) => {
+            const item = $(`
+                <div class="list-group-item d-flex justify-content-between">
+                  <div>
+                    <h6>${api.name}</h6>
+                    <small>${api.endpoint}</small>
+                  </div>
+                  <div class="btn-group">
+                    <button class="btn btn-sm btn-primary edit-api" data-id="${id}">
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger delete-api" data-api-id="${id}">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </div>`);
+            list.append(item);
+        });
+        $('.delete-api').off('click').on('click', function() {
+            const id = $(this).data('api-id');
+            deleteCustomApi(id);
+        });
+        $('.edit-api').off('click').on('click', function() {
+            const id = $(this).data('id');
+            const api = customAPIs[id];
+            editingApiId = id;
+            $('#apiName').val(api.name);
+            $('#apiEndpoint').val(api.endpoint);
+            $('#apiKey').val(api.apiKey);
+            $('#modelEndpoint').val(api.modelEndpoint);
+            $('#apiFormat').val(api.format);
+            $('#manualSpeakers').val((api.manual||[]).join(','));
+            $('#maxLength').val(api.maxLength||'');
+        });
+    }
+
     // 初始API选择变更事件
     $('#api').on('change', function() {
         const apiName = $(this).val();
@@ -407,6 +452,9 @@ function refreshSavedApisList() {
                     <small class="text-muted">${api.endpoint}</small>
                 </div>
                 <div class="btn-group">
+                    <button class="btn btn-sm btn-primary edit-api" data-id="${apiId}">
+                      <i class="fas fa-edit"></i>
+                    </button>
                     <button class="btn btn-sm btn-danger delete-api" data-api-id="${apiId}">
                         <i class="fas fa-trash"></i>
                     </button>
@@ -421,6 +469,20 @@ function refreshSavedApisList() {
     $('.delete-api').on('click', function() {
         const apiId = $(this).data('api-id');
         deleteCustomApi(apiId);
+    });
+    
+    // 添加编辑API的事件处理程序
+    $('.edit-api').on('click', function() {
+        const apiId = $(this).data('id');
+        const api = customAPIs[apiId];
+        editingApiId = apiId;
+        $('#apiName').val(api.name);
+        $('#apiEndpoint').val(api.endpoint);
+        $('#apiKey').val(api.apiKey);
+        $('#modelEndpoint').val(api.modelEndpoint);
+        $('#apiFormat').val(api.format);
+        $('#manualSpeakers').val((api.manual || []).join(','));
+        $('#maxLength').val(api.maxLength || '');
     });
 }
 
@@ -453,8 +515,12 @@ function deleteCustomApi(apiId) {
 function updateCharCountText() {
     const currentLength = $('#text').val().length;
     const apiName = $('#api').val();
+    const customApi = customAPIs[apiName];
     
-    if (apiName === 'oai-tts' || customAPIs[apiName]) {
+    if (customApi) {
+        const maxLength = customApi.maxLength || 100000;
+        $('#charCount').text(`最多${maxLength}字符，目前已输入${currentLength}字符。`);
+    } else if (apiName === 'oai-tts' || customAPIs[apiName]) {
         $('#charCount').text(`最多100个中文字符或约150个英文字符，目前已输入${currentLength}个字符`);
     } else {
         $('#charCount').text(`最多100000个字符，目前已输入${currentLength}个字符；长文本将智能分段生成语音。`);
