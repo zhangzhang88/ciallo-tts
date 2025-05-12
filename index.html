@@ -224,7 +224,7 @@
                 </div>
                 <div class="modal-body">
                     <div class="alert alert-info">
-                        <i class="fas fa-info-circle"></i> 您可以添加自定义的TTS API。支持两种格式：OpenAI格式和Edge API格式。添加后，它将出现在API选择下拉列表中。
+                        <i class="fas fa-info-circle"></i> 您可以添加自定义的TTS API。支持两种格式：OpenAI格式和Edge API格式。
                     </div>
                     
                     <form id="customApiForm">
@@ -272,10 +272,38 @@
                     </form>
                     
                     <hr>
-                    <h6>已保存的自定义API</h6>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="mb-0">已保存的自定义API</h6>
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="exportApisBtn" title="导出所有自定义API配置">
+                                <i class="fas fa-file-export"></i> 导出
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="importApisBtn" title="导入自定义API配置">
+                                <i class="fas fa-file-import"></i> 导入
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger" id="batchDeleteBtn" style="display:none">
+                                <i class="fas fa-trash-alt"></i> 批量删除
+                            </button>
+                        </div>
+                    </div>
+                    <div class="api-selection-tools mb-2" style="display:none">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="selectAllApis">
+                                <label class="form-check-label" for="selectAllApis">全选</label>
+                            </div>
+                            <div>
+                                <button class="btn btn-sm btn-danger" id="deleteSelectedBtn">删除选中</button>
+                                <button class="btn btn-sm btn-secondary" id="cancelSelectionBtn">取消</button>
+                            </div>
+                        </div>
+                    </div>
                     <div id="savedApisList" class="list-group mt-3">
                         <!-- 动态加载已保存的API -->
                     </div>
+                    
+                    <!-- 隐藏的文件输入用于导入 -->
+                    <input type="file" id="importApisInput" accept=".json" style="display:none">
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>

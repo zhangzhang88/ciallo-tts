@@ -288,3 +288,160 @@ footer a:hover {
     height: 3rem;
     color: #6366f1;
 }
+
+/* 自定义API管理相关样式 */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    max-width: 350px;
+}
+
+.toast {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    margin-bottom: 10px;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
+}
+
+.toast.show {
+    opacity: 1;
+}
+
+.toast-body {
+    padding: 0.75rem 1.25rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.toast-danger {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.toast-warning {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+}
+
+.toast-info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
+.toast-success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.toast-loading {
+    background-color: #fff;
+    color: #212529;
+    border: 1px solid #dee2e6;
+}
+
+/* 改进历史记录项目样式 */
+.history-item {
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.history-item:hover {
+    background-color: #f8f9fa;
+}
+
+/* 进度条样式 */
+.progress {
+    height: 8px;
+    margin-top: 10px;
+}
+
+.progress-bar {
+    transition: width 0.3s ease;
+    background-color: #007bff;
+}
+
+/* API 管理模态框改进 */
+#apiManagerModal .modal-dialog {
+    max-width: 700px;
+}
+
+#savedApisList .list-group-item {
+    transition: all 0.3s ease;
+    border-left: 3px solid transparent;
+}
+
+#savedApisList .list-group-item:hover {
+    border-left-color: #007bff;
+    background-color: #f8f9fa;
+}
+
+.api-selection-tools {
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+
+/* 改进表单元素样式 */
+.form-control:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* 按钮悬停动画 */
+.btn {
+    transition: all 0.2s ease;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #999;
+}
+
+/* 响应式改进 */
+@media (max-width: 768px) {
+    .toast-container {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        max-width: none;
+    }
+    
+    #savedApisList .list-group-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    #savedApisList .list-group-item .btn-group {
+        margin-top: 10px;
+        align-self: flex-end;
+    }
+}

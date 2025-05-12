@@ -431,46 +431,217 @@ $(document).ready(function() {
         showInfo(`自定义API ${editingApiId? '已更新':'已添加'}: ${name}`);
     });
 
-    function refreshSavedApisList() {
-        const list = $('#savedApisList').empty();
-        if (!Object.keys(customAPIs).length) {
-            list.append('<div class="alert alert-light">没有保存的自定义API</div>');
+    // 添加导出API配置功能
+    $('#exportApisBtn').on('click', function() {
+        if (Object.keys(customAPIs).length === 0) {
+            showWarning('没有自定义API可导出');
             return;
         }
-        Object.entries(customAPIs).forEach(([id, api]) => {
-            const item = $(`
-                <div class="list-group-item d-flex justify-content-between">
-                  <div>
-                    <h6>${api.name}</h6>
-                    <small>${api.endpoint}</small>
-                  </div>
-                  <div class="btn-group">
-                    <button class="btn btn-sm btn-primary edit-api" data-id="${id}">
-                      <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn btn-sm btn-danger delete-api" data-api-id="${id}">
-                      <i class="fas fa-trash"></i>
-                    </button>
-                  </div>
-                </div>`);
-            list.append(item);
+        
+        try {
+            // 创建一个包含所有自定义API的JSON
+            const exportData = {
+                version: '1.0',
+                timestamp: new Date().toISOString(),
+                apis: customAPIs
+            };
+            
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const blob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            
+            // 创建下载链接并触发下载
+            const a = document.createElement('a');
+            a.download = `ciallo-tts-apis-${new Date().toISOString().slice(0,10)}.json`;
+            a.href = url;
+            a.click();
+            
+            // 清理URL对象
+            setTimeout(() => URL.revokeObjectURL(url), 100);
+            
+            showInfo(`成功导出 ${Object.keys(customAPIs).length} 个自定义API配置`);
+        } catch (error) {
+            console.error('导出API失败:', error);
+            showError('导出失败: ' + error.message);
+        }
+    });
+    
+    // 添加导入API配置功能
+    $('#importApisBtn').on('click', function() {
+        $('#importApisInput').click();
+    });
+    
+    $('#importApisInput').on('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            try {
+                const data = JSON.parse(event.target.result);
+                
+                // 验证导入的数据格式
+                if (!data.apis || typeof data.apis !== 'object') {
+                    throw new Error('无效的API配置文件格式');
+                }
+                
+                // 计算有多少个API将被导入
+                const apiCount = Object.keys(data.apis).length;
+                
+                if (apiCount === 0) {
+                    showWarning('导入的文件不包含任何API配置');
+                    return;
+                }
+                
+                // 确认导入
+                if (confirm(`确定要导入 ${apiCount} 个自定义API配置吗？这将合并与现有配置。`)) {
+                    // 合并API配置
+                    let importedCount = 0;
+                    let updatedCount = 0;
+                    
+                    Object.entries(data.apis).forEach(([id, api]) => {
+                        // 生成新ID，避免覆盖现有配置
+                        const newId = id.startsWith('custom-') ? id : 'custom-' + Date.now() + '-' + importedCount;
+                        
+                        // 检查是否已存在相同名称和端点的API
+                        const existingApiId = Object.keys(customAPIs).find(apiId => 
+                            customAPIs[apiId].name === api.name && 
+                            customAPIs[apiId].endpoint === api.endpoint
+                        );
+                        
+                        if (existingApiId) {
+                            // 更新现有API
+                            customAPIs[existingApiId] = { ...api };
+                            API_CONFIG[existingApiId] = { 
+                                url: api.endpoint, 
+                                isCustom: true, 
+                                apiKey: api.apiKey, 
+                                format: api.format, 
+                                manual: api.manual,
+                                maxLength: api.maxLength 
+                            };
+                            updatedCount++;
+                        } else {
+                            // 添加新API
+                            customAPIs[newId] = { ...api };
+                            API_CONFIG[newId] = { 
+                                url: api.endpoint, 
+                                isCustom: true, 
+                                apiKey: api.apiKey, 
+                                format: api.format, 
+                                manual: api.manual,
+                                maxLength: api.maxLength 
+                            };
+                            importedCount++;
+                        }
+                    });
+                    
+                    // 保存到localStorage
+                    localStorage.setItem('customAPIs', JSON.stringify(customAPIs));
+                    
+                    // 更新UI
+                    updateApiOptions();
+                    refreshSavedApisList();
+                    
+                    showInfo(`导入完成: 新增 ${importedCount} 个API, 更新 ${updatedCount} 个API`);
+                }
+            } catch (error) {
+                console.error('导入API失败:', error);
+                showError('导入失败: ' + error.message);
+            }
+            
+            // 重置文件输入，允许重复选择同一文件
+            this.value = '';
+        };
+        
+        reader.onerror = function() {
+            showError('读取文件失败');
+        };
+        
+        reader.readAsText(file);
+    });
+    
+    // 添加批量删除功能
+    $('#batchDeleteBtn').on('click', function() {
+        $('.api-selection-tools').show();
+        $('#batchDeleteBtn').hide();
+        $('#exportApisBtn, #importApisBtn').hide();
+        
+        // 为每个API项添加复选框
+        $('#savedApisList .list-group-item').each(function() {
+            const apiId = $(this).find('.delete-api').data('api-id');
+            
+            // 在每个API项前添加复选框
+            $(this).prepend(
+                `<div class="form-check api-checkbox" style="position:absolute; left:10px; top:50%; transform:translateY(-50%);">
+                    <input class="form-check-input api-select" type="checkbox" value="${apiId}">
+                </div>`
+            );
+            
+            // 调整布局以适应复选框
+            $(this).css('padding-left', '40px').css('position', 'relative');
+            
+            // 隐藏原有的按钮
+            $(this).find('.btn-group').hide();
         });
-        $('.delete-api').off('click').on('click', function() {
-            const id = $(this).data('api-id');
-            deleteCustomApi(id);
+    });
+    
+    // 全选功能
+    $('#selectAllApis').on('change', function() {
+        const isChecked = $(this).prop('checked');
+        $('.api-select').prop('checked', isChecked);
+    });
+    
+    // 取消选择
+    $('#cancelSelectionBtn').on('click', function() {
+        exitBatchDeleteMode();
+    });
+    
+    // 删除选中项
+    $('#deleteSelectedBtn').on('click', function() {
+        const selectedIds = [];
+        $('.api-select:checked').each(function() {
+            selectedIds.push($(this).val());
         });
-        $('.edit-api').off('click').on('click', function() {
-            const id = $(this).data('id');
-            const api = customAPIs[id];
-            editingApiId = id;
-            $('#apiName').val(api.name);
-            $('#apiEndpoint').val(api.endpoint);
-            $('#apiKey').val(api.apiKey);
-            $('#modelEndpoint').val(api.modelEndpoint);
-            $('#apiFormat').val(api.format);
-            $('#manualSpeakers').val((api.manual||[]).join(','));
-            $('#maxLength').val(api.maxLength||'');
-        });
+        
+        if (selectedIds.length === 0) {
+            showWarning('请先选择要删除的API');
+            return;
+        }
+        
+        if (confirm(`确定要删除选中的 ${selectedIds.length} 个API吗？`)) {
+            selectedIds.forEach(id => {
+                delete customAPIs[id];
+                delete API_CONFIG[id];
+            });
+            
+            // 更新localStorage
+            localStorage.setItem('customAPIs', JSON.stringify(customAPIs));
+            
+            // 更新UI
+            updateApiOptions();
+            
+            // 如果当前选中的是被删除的API，切换到edge-api
+            if (selectedIds.includes($('#api').val())) {
+                $('#api').val('edge-api').trigger('change');
+            }
+            
+            showInfo(`已删除 ${selectedIds.length} 个自定义API`);
+            
+            // 退出批量删除模式
+            exitBatchDeleteMode();
+            refreshSavedApisList();
+        }
+    });
+
+    function exitBatchDeleteMode() {
+        $('.api-selection-tools').hide();
+        $('#batchDeleteBtn').show();
+        $('#exportApisBtn, #importApisBtn').show();
+        $('.api-checkbox').remove();
+        $('#savedApisList .list-group-item').css('padding-left', '').css('position', '');
+        $('#savedApisList .list-group-item .btn-group').show();
+        $('#selectAllApis').prop('checked', false);
     }
 
     // 初始API选择变更事件
@@ -490,7 +661,10 @@ function refreshSavedApisList() {
     
     if (Object.keys(customAPIs).length === 0) {
         listContainer.append('<div class="alert alert-light">没有保存的自定义API</div>');
+        $('#batchDeleteBtn').hide();
         return;
+    } else {
+        $('#batchDeleteBtn').show();
     }
     
     Object.keys(customAPIs).forEach(apiId => {
@@ -499,13 +673,20 @@ function refreshSavedApisList() {
             <div class="list-group-item d-flex justify-content-between align-items-center">
                 <div>
                     <h6>${api.name}</h6>
-                    <small class="text-muted">${api.endpoint}</small>
+                    <div class="d-flex flex-wrap text-muted small">
+                        <span class="mr-2"><i class="fas fa-link"></i> ${api.endpoint}</span>
+                        ${api.format ? `<span class="mr-2"><i class="fas fa-code"></i> ${api.format === 'openai' ? 'OpenAI' : 'Edge'}</span>` : ''}
+                        ${api.manual && api.manual.length ? `<span><i class="fas fa-microphone"></i> ${api.manual.length}个讲述人</span>` : ''}
+                    </div>
                 </div>
                 <div class="btn-group">
-                    <button class="btn btn-sm btn-primary edit-api" data-id="${apiId}">
+                    <button class="btn btn-sm btn-primary edit-api" data-id="${apiId}" title="编辑">
                       <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn btn-sm btn-danger delete-api" data-api-id="${apiId}">
+                    <button class="btn btn-sm btn-outline-primary copy-api" data-id="${apiId}" title="复制">
+                      <i class="fas fa-clone"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger delete-api" data-api-id="${apiId}" title="删除">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -533,35 +714,41 @@ function refreshSavedApisList() {
         $('#apiFormat').val(api.format);
         $('#manualSpeakers').val((api.manual || []).join(','));
         $('#maxLength').val(api.maxLength || '');
+        updateApiFormPlaceholders(api.format || 'openai');
+    });
+    
+    // 添加复制API的事件处理程序
+    $('.copy-api').on('click', function() {
+        const apiId = $(this).data('id');
+        const api = customAPIs[apiId];
+        
+        if (!api) return;
+        
+        const newId = 'custom-' + Date.now();
+        const apiCopy = {...api};
+        apiCopy.name = `${api.name} (复制)`;
+        
+        customAPIs[newId] = apiCopy;
+        API_CONFIG[newId] = { 
+            url: apiCopy.endpoint, 
+            isCustom: true, 
+            apiKey: apiCopy.apiKey, 
+            format: apiCopy.format, 
+            manual: apiCopy.manual,
+            maxLength: apiCopy.maxLength 
+        };
+        
+        // 保存到localStorage
+        localStorage.setItem('customAPIs', JSON.stringify(customAPIs));
+        
+        // 更新UI
+        updateApiOptions();
+        refreshSavedApisList();
+        showInfo(`已复制API: ${apiCopy.name}`);
     });
 }
 
-// 删除自定义API
-function deleteCustomApi(apiId) {
-    if (confirm(`确定要删除API "${customAPIs[apiId].name}"吗？`)) {
-        // 删除API
-        delete customAPIs[apiId];
-        delete API_CONFIG[apiId];
-        
-        // 更新localStorage
-        localStorage.setItem('customAPIs', JSON.stringify(customAPIs));
-        
-        // 刷新API列表
-        refreshSavedApisList();
-        
-        // 更新下拉列表
-        updateApiOptions();
-        
-        // 如果当前选中的是被删除的API，切换到edge-api
-        if ($('#api').val() === apiId) {
-            $('#api').val('edge-api').trigger('change');
-        }
-        
-        showInfo('自定义API已删除');
-    }
-}
-
-// 添加更新字符计数提示文本的函数
+// 更新字符计数提示文本
 function updateCharCountText() {
     const currentLength = $('#text').val().length;
     const apiName = $('#api').val();
