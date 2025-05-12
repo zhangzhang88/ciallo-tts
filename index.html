@@ -224,21 +224,30 @@
                 </div>
                 <div class="modal-body">
                     <div class="alert alert-info">
-                        <i class="fas fa-info-circle"></i> 您可以添加自定义的OpenAI格式TTS API。添加后，它将出现在API选择下拉列表中。
+                        <i class="fas fa-info-circle"></i> 您可以添加自定义的TTS API。支持两种格式：OpenAI格式和Edge API格式。添加后，它将出现在API选择下拉列表中。
                     </div>
                     
                     <form id="customApiForm">
                         <div class="form-group">
                             <label for="apiName">API名称 <small class="text-muted">(显示在下拉菜单中)</small></label>
-                            <input type="text" class="form-control" id="apiName" placeholder="例如: 我的OpenAI" required>
+                            <input type="text" class="form-control" id="apiName" placeholder="例如: 我的自定义API" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="apiFormat">API格式</label>
+                            <select id="apiFormat" class="form-control">
+                                <option value="openai">OpenAI 格式</option>
+                                <option value="edge">Edge API 格式</option>
+                            </select>
+                            <small class="form-text text-muted">选择您的API所使用的格式，这将影响请求的参数格式</small>
                         </div>
                         <div class="form-group">
                             <label for="apiEndpoint">API端点URL</label>
                             <input type="url" class="form-control" id="apiEndpoint" placeholder="https://api.example.com/v1/audio/speech" required>
                         </div>
                         <div class="form-group">
-                            <label for="apiKey">API密钥 <small class="text-muted">(可选，将作为Authorization: Bearer header发送)</small></label>
+                            <label for="apiKey">API密钥 <small class="text-muted">(可选)</small></label>
                             <input type="password" class="form-control" id="apiKey" placeholder="sk-...">
+                            <small class="form-text text-muted">对于OpenAI格式，使用Bearer Token；对于Edge API格式，可以使用"x-api-key: 值"或Bearer Token</small>
                         </div>
                         <div class="form-group">
                             <label for="modelEndpoint">模型列表端点 <small class="text-muted">(用于获取可用的模型/讲述人)</small></label>
@@ -250,29 +259,22 @@
                             </div>
                         </div>
                         <div class="form-group">
-                            <label for="apiFormat">请求格式</label>
-                            <select id="apiFormat" class="form-control">
-                                <option value="openai">OpenAI 格式</option>
-                                <option value="edge">Edge API 格式</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
                             <label for="manualSpeakers">自定义讲述人列表 <small class="text-muted">(逗号分隔)</small></label>
                             <textarea id="manualSpeakers" class="form-control" rows="2" placeholder="voice1,voice2,voice3"></textarea>
+                            <small class="form-text text-muted">如果无法自动获取模型，您可以手动输入讲述人列表</small>
                         </div>
                         <div class="form-group">
                             <label for="maxLength">最大请求长度</label>
                             <input type="number" id="maxLength" class="form-control" placeholder="例如: 5000">
-                            <small class="form-text text-muted">此 API 文本最大字符数限制</small>
+                            <small class="form-text text-muted">此 API 文本最大字符数限制，留空表示使用默认限制</small>
                         </div>
-                        <button type="submit" class="btn btn-primary">添加API</button>
+                        <button type="submit" class="btn btn-primary">保存API</button>
                     </form>
                     
                     <hr>
                     <h6>已保存的自定义API</h6>
                     <div id="savedApisList" class="list-group mt-3">
                         <!-- 动态加载已保存的API -->
-                        <!-- 在 script.js 中生成的项需包含“编辑”按钮 -->
                     </div>
                 </div>
                 <div class="modal-footer">

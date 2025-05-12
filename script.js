@@ -94,11 +94,32 @@ async function updateSpeakerOptions(apiName) {
     try {
         // 检查是否是自定义API
         if (customAPIs[apiName]) {
-            const list = customAPIs[apiName].manual || [];
-            if (list.length) {
-                list.forEach(v => speakerSelect.append(new Option(v, v)));
+            const customApi = customAPIs[apiName];
+            
+            // 如果有手动设置的讲述人列表，使用它
+            if (customApi.manual && customApi.manual.length) {
+                speakerSelect.empty();
+                customApi.manual.forEach(v => speakerSelect.append(new Option(v, v)));
+            } 
+            // 如果有API密钥和模型端点，尝试获取讲述人
+            else if (customApi.apiKey && customApi.modelEndpoint) {
+                try {
+                    const speakers = await fetchCustomSpeakers(apiName);
+                    speakerSelect.empty();
+                    
+                    if (Object.keys(speakers).length === 0) {
+                        speakerSelect.append(new Option('未找到讲述人，请手动添加', ''));
+                    } else {
+                        Object.entries(speakers).forEach(([key, value]) => {
+                            speakerSelect.append(new Option(value, key));
+                        });
+                    }
+                } catch (error) {
+                    console.error('获取自定义讲述人失败:', error);
+                    speakerSelect.empty().append(new Option('获取讲述人失败，请手动添加', ''));
+                }
             } else {
-                speakerSelect.append(new Option('请先获取模型或手动输入', ''));
+                speakerSelect.empty().append(new Option('请先获取模型或手动输入讲述人', ''));
             }
         } else if (apiConfig[apiName]) {
             // 使用预定义的speakers
@@ -193,13 +214,15 @@ function updateApiTipsText(apiName) {
     
     // 如果是自定义API
     if (customAPIs[apiName]) {
-        $('#apiTips').text(`自定义API: ${customAPIs[apiName].name} - 使用OpenAI格式`);
+        const format = customAPIs[apiName].format || 'openai';
+        const formatStr = format === 'openai' ? 'OpenAI格式' : 'Edge API格式';
+        $('#apiTips').text(`自定义API: ${customAPIs[apiName].name} - 使用${formatStr}`);
     } else {
         $('#apiTips').text(tips[apiName] || '');
     }
     
     // 根据API类型调整界面
-    if (apiName === 'oai-tts' || customAPIs[apiName]) {
+    if (apiName === 'oai-tts' || (customAPIs[apiName] && customAPIs[apiName].format === 'openai')) {
         $('#instructionsContainer').show();
         $('#formatContainer').show();
         $('#rateContainer, #pitchContainer').hide();
@@ -334,29 +357,56 @@ $(document).ready(function() {
         $('#apiFormat').val('openai');
         $('#manualSpeakers').val('');
         $('#maxLength').val('');
+        updateApiFormPlaceholders('openai'); // 初始化表单占位符
         refreshSavedApisList();
         $('#apiManagerModal').modal('show');
+    });
+    
+    // 监听API格式选择变化
+    $('#apiFormat').on('change', function() {
+        updateApiFormPlaceholders($(this).val());
     });
     
     $('#fetchModelsBtn').on('click', async function() {
         const endpoint = $('#apiEndpoint').val().trim();
         const key = $('#apiKey').val().trim();
         const modelUrl = $('#modelEndpoint').val().trim();
+        const apiFormat = $('#apiFormat').val();
+        
         if (!endpoint || !modelUrl) {
             showError('请先填写 API 端点和模型列表端点');
             return;
         }
+        
         try {
             const headers = {'Content-Type':'application/json'};
             if (key) headers['Authorization'] = `Bearer ${key}`;
             const res = await fetch(modelUrl, {method:'GET', headers});
+            
             if (!res.ok) throw new Error(res.statusText);
             const data = await res.json();
-            const models = (data.data||data).map(m=>m.id||m.ShortName);
-            $('#manualSpeakers').val(models.join(','));
-            showInfo('模型列表已填充到“自定义讲述人列表”');
+            
+            let models = [];
+            if (apiFormat === 'openai') {
+                // OpenAI格式处理
+                models = Array.isArray(data.data) 
+                    ? data.data.map(m => m.id || m.name) 
+                    : [];
+            } else if (apiFormat === 'edge') {
+                // Edge API格式处理
+                models = Array.isArray(data) 
+                    ? data.map(m => m.ShortName || m.name) 
+                    : [];
+            }
+            
+            if (models.length > 0) {
+                $('#manualSpeakers').val(models.join(','));
+                showInfo(`成功获取到 ${models.length} 个模型`);
+            } else {
+                showWarning('未找到可用模型，请检查API格式是否正确');
+            }
         } catch (e) {
-            showError('获取模型失败: '+e.message);
+            showError('获取模型失败: ' + e.message);
         }
     });
 
@@ -650,19 +700,22 @@ async function makeRequest(url, isPreview, text, requestInfo = '', speakerId = n
     try {
         // 获取当前API类型
         const apiName = $('#api').val();
-        const isCustomApi = customAPIs[apiName];
+        const customApi = customAPIs[apiName];
+        const isCustomApi = !!customApi;
+        const apiFormat = customApi ? (customApi.format || 'openai') : (apiName === 'oai-tts' ? 'openai' : 'edge');
         
-        // 如果是OAI-TTS或自定义API，移除所有的停顿标签
-        if (apiName === 'oai-tts' || isCustomApi) {
+        // 如果是OAI-TTS或自定义OpenAI格式API，移除所有的停顿标签
+        if (apiFormat === 'openai') {
             text = text.replace(/<break\s+time=["'](\d+(?:\.\d+)?[ms]s?)["']\s*\/>/g, '');
             
             // 对OAI格式API添加文本长度验证
             const chineseChars = text.match(/[\u4e00-\u9fa5]/g) || [];
             const otherChars = text.length - chineseChars.length;
             const effectiveLength = chineseChars.length + otherChars / 1.5;
+            const maxLength = customApi?.maxLength || 100;
             
-            if (effectiveLength > 100) {
-                throw new Error(`OpenAI格式API文本长度超限，最多支持100个中文字符或约150个英文字符，当前等效长度: ${Math.round(effectiveLength)}`);
+            if (effectiveLength > maxLength) {
+                throw new Error(`OpenAI格式API文本长度超限，最多支持${maxLength}个中文字符或约${Math.round(maxLength * 1.5)}个英文字符，当前等效长度: ${Math.round(effectiveLength)}`);
             }
         } else {
             // 转义文本中的特殊字符，但保护 SSML 标签
@@ -681,7 +734,7 @@ async function makeRequest(url, isPreview, text, requestInfo = '', speakerId = n
         let requestUrl = url;
         
         // 根据不同的API创建不同的请求体
-        if (apiName === 'oai-tts' || isCustomApi) {
+        if (apiFormat === 'openai') {
             const instructions = $('#instructions').val().trim();
             const format = $('#audioFormat').val();
             
@@ -698,18 +751,9 @@ async function makeRequest(url, isPreview, text, requestInfo = '', speakerId = n
             }
             
             // 如果是自定义API且有apiKey，添加Authorization头
-            if (isCustomApi && customAPIs[apiName].apiKey) {
-                headers['Authorization'] = `Bearer ${customAPIs[apiName].apiKey}`;
+            if (isCustomApi && customApi.apiKey) {
+                headers['Authorization'] = `Bearer ${customApi.apiKey}`;
             }
-            
-            // 记录OAI格式请求详情以便调试
-            console.log('OpenAI格式请求详情:', {
-                isPreview,
-                requestBody,
-                url: requestUrl,
-                speakerId: voice,
-                isCustomApi: !!isCustomApi
-            });
         } else {
             requestBody = {
                 text: text,
@@ -718,6 +762,17 @@ async function makeRequest(url, isPreview, text, requestInfo = '', speakerId = n
                 pitch: parseInt($('#pitch').val()),
                 preview: isPreview
             };
+            
+            // 如果是自定义Edge格式API且有apiKey
+            if (isCustomApi && customApi.apiKey) {
+                // 检查是否是x-api-key格式
+                if (customApi.apiKey.toLowerCase().startsWith('x-api-key:')) {
+                    const keyValue = customApi.apiKey.substring('x-api-key:'.length).trim();
+                    headers['x-api-key'] = keyValue;
+                } else {
+                    headers['Authorization'] = `Bearer ${customApi.apiKey}`;
+                }
+            }
         }
 
         console.log('发送请求到:', requestUrl);
@@ -753,7 +808,7 @@ async function makeRequest(url, isPreview, text, requestInfo = '', speakerId = n
                 .attr('href', currentAudioURL);
                 
             // 设置下载文件名
-            const audioFormat = (apiName === 'oai-tts' || isCustomApi) ? $('#audioFormat').val() : 'mp3';
+            const audioFormat = (apiFormat === 'openai') ? $('#audioFormat').val() : 'mp3';
             $('#download').attr('download', `voice.${audioFormat}`);
         }
 
@@ -1243,4 +1298,19 @@ function showWarning(message) {
 
 function showInfo(message) {
     showMessage(message, 'info');
+}
+
+// 根据选择的API格式更新表单占位符
+function updateApiFormPlaceholders(format) {
+    if (format === 'openai') {
+        $('#apiEndpoint').attr('placeholder', 'https://api.example.com/v1/audio/speech');
+        $('#modelEndpoint').attr('placeholder', 'https://api.example.com/v1/models');
+        $('#apiKey').attr('placeholder', 'sk-...');
+        $('#manualSpeakers').attr('placeholder', 'tts-1,tts-1-hd,alloy,echo,fable,onyx,nova,shimmer');
+    } else if (format === 'edge') {
+        $('#apiEndpoint').attr('placeholder', 'https://api.example.com/api/tts');
+        $('#modelEndpoint').attr('placeholder', 'https://api.example.com/api/voices');
+        $('#apiKey').attr('placeholder', 'x-api-key: ...');
+        $('#manualSpeakers').attr('placeholder', 'zh-CN-XiaoxiaoNeural,en-US-AriaNeural,...');
+    }
 }
