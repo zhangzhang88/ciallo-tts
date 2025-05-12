@@ -288,3 +288,58 @@ footer a:hover {
     height: 3rem;
     color: #6366f1;
 }
+
+/* 添加新样式 */
+.btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+#apiManagerModal .form-group {
+    margin-bottom: 1.2rem;
+}
+
+#apiManagerModal label {
+    font-weight: 500;
+    margin-bottom: 0.4rem;
+}
+
+#apiManagerModal .text-muted {
+    font-size: 0.85rem;
+}
+
+#apiManagerModal .alert-info {
+    background: linear-gradient(145deg, #e6f7ff 0%, #ccf1ff 100%);
+    border-color: #a8e2ff;
+}
+
+/* 优化按钮过渡效果 */
+.btn-sm {
+    padding: 0.25rem 0.7rem;
+    transition: all 0.2s ease;
+}
+
+.btn-outline-secondary:hover {
+    background-color: #6c757d;
+    color: white;
+}
+
+/* 优化自定义API列表项 */
+#savedApisList .list-group-item {
+    transition: all 0.2s ease;
+    background: linear-gradient(145deg, #ffffff 0%, #f8faff 100%);
+}
+
+#savedApisList .list-group-item:hover {
+    background: linear-gradient(145deg, #f8faff 0%, #f0f7ff 100%);
+    transform: translateY(-1px);
+}
+
+#savedApisList .btn-group {
+    opacity: 0.8;
+    transition: opacity 0.2s ease;
+}
+
+#savedApisList .list-group-item:hover .btn-group {
+    opacity: 1;
+}
