@@ -30,19 +30,54 @@ Ciallo TTS 是一款免费的在线文本转语音工具，支持多种声音选
 
 ### 自定义 API
 
-Ciallo TTS 支持添加自定义的 OpenAI 格式 TTS API。您可以：
+Ciallo TTS 支持添加自定义 API 端点，目前支持两种格式：
 
-1. 点击 API 选择框旁边的设置按钮
-2. 在弹出的管理页面中填写您的 API 信息
-3. 系统会自动从您提供的模型端点获取可用的语音模型
+#### OpenAI 格式 API
 
-自定义 API 需要符合 OpenAI 的 API 格式，一般需要提供：
+- 支持与 OpenAI TTS API 兼容的服务，如 OpenAI、LMStudio、LocalAI 等
+- 请求格式: POST
+  ```json
+  {
+    "model": "tts-1",
+    "input": "您好，这是一段测试文本",
+    "voice": "alloy",
+    "response_format": "mp3"
+  }
+  ```
+- 可选参数：`instructions` - 语音风格指导
 
-- API 端点 URL（例如：`https://api.example.com/v1/audio/speech`）
-- 模型列表端点（例如：`https://api.example.com/v1/models`）
-- API 密钥（如需要）
+#### Edge 格式 API
 
-默认情况下，API 允许跨域请求，可以被任何网站调用。
+- 支持与 Microsoft Edge TTS API 兼容的服务
+- 请求格式: POST
+  ```json
+  {
+    "text": "您好，这是一段测试文本",
+    "voice": "zh-CN-XiaoxiaoNeural",
+    "rate": 0,
+    "pitch": 0
+  }
+  ```
+
+#### 如何添加自定义 API
+
+1. 点击界面上的"管理API"按钮
+2. 填写以下信息：
+   - API 名称：自定义名称
+   - API 端点：语音生成服务地址
+   - API 密钥：可选，用于授权
+   - 模型列表端点：可选，用于获取可用模型
+   - API 格式：选择 OpenAI 或 Edge 格式
+   - 手动输入讲述人列表：逗号分隔的讲述人列表
+   - 最大文本长度：可选，限制单次请求的文本长度
+
+3. 点击"获取模型"按钮可自动填充可用讲述人列表
+4. 点击"保存"完成添加
+
+#### 导入/导出 API 配置
+
+- 导出：将所有自定义 API 配置导出为 JSON 文件
+- 导入：从 JSON 文件导入 API 配置
 
 ## 部署指南
 
