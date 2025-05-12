@@ -83,11 +83,17 @@ $(document).ready(function() {
                 $('#formatContainer').show();
                 $('#rateContainer, #pitchContainer').hide();
                 $('#pauseControls').hide(); // 隐藏停顿控制
+                
+                // 更新字符限制提示文本
+                updateCharCountText();
             } else {
                 $('#instructionsContainer').hide();
                 $('#formatContainer').hide();
                 $('#rateContainer, #pitchContainer').show();
                 $('#pauseControls').show(); // 显示停顿控制
+                
+                // 恢复默认字符限制提示文本
+                updateCharCountText();
             }
         });
 
@@ -111,8 +117,7 @@ $(document).ready(function() {
         });
 
         $('#text').on('input', function() {
-            const currentLength = $(this).val().length;
-            $('#charCount').text(`最多50000个字符，目前已输入${currentLength}个字符；长文本将智能分段生成语音。`);
+            updateCharCountText();
         });
 
         // 添加插入停顿功能
@@ -146,6 +151,18 @@ $(document).ready(function() {
         });
     });
 });
+
+// 添加更新字符计数提示文本的函数
+function updateCharCountText() {
+    const currentLength = $('#text').val().length;
+    const apiName = $('#api').val();
+    
+    if (apiName === 'oai-tts') {
+        $('#charCount').text(`最多100个中文字符或约150个英文字符，目前已输入${currentLength}个字符`);
+    } else {
+        $('#charCount').text(`最多100000个字符，目前已输入${currentLength}个字符；长文本将智能分段生成语音。`);
+    }
+}
 
 function canMakeRequest() {
     if (isGenerating) {
@@ -274,6 +291,15 @@ async function makeRequest(url, isPreview, text, requestInfo = '', speakerId = n
         // 如果是OAI-TTS，移除所有的停顿标签
         if (apiName === 'oai-tts') {
             text = text.replace(/<break\s+time=["'](\d+(?:\.\d+)?[ms]s?)["']\s*\/>/g, '');
+            
+            // 对OAI-TTS添加文本长度验证
+            const chineseChars = text.match(/[\u4e00-\u9fa5]/g) || [];
+            const otherChars = text.length - chineseChars.length;
+            const effectiveLength = chineseChars.length + otherChars / 1.5;
+            
+            if (effectiveLength > 100) {
+                throw new Error(`OAI-TTS API文本长度超限，最多支持100个中文字符或约150个英文字符，当前等效长度: ${Math.round(effectiveLength)}`);
+            }
         } else {
             // 转义文本中的特殊字符，但保护 SSML 标签
             text = escapeXml(text);
@@ -575,6 +601,13 @@ function getTextLength(str) {
 }
 
 function splitText(text, maxLength = 5000) {
+    // 如果是OAI-TTS，使用更小的分段大小
+    const apiName = $('#api').val();
+    if (apiName === 'oai-tts') {
+        // 对于OAI-TTS，限制为100个中文字符
+        maxLength = 100;
+    }
+    
     const segments = [];
     let remainingText = text.trim();
 
