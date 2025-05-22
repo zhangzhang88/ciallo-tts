@@ -6,7 +6,7 @@
     
     <!-- 核心SEO标签 -->
     <title>文本转语音 | 免费在线TTS转换工具 - Ciallo TTS</title>
-    <meta name="description" content="Ciallo TTS 是一款免费的在线文本转语音工具，支持多种声音选择，可调节语速和语调，提供即时试听和下载功能。快速将文字转换成自然流畅的语音。Ciallo TTS是免费的文本转语音工具，提供语音合成服务，支持多种语言，包括英语、法语、德语、西班牙语、阿拉伯语、中文、日语、朝鲜语、粤语、越南语等，以及多种语音风格，提供丰富的讲述人。Ciallo TTS is an online text-to-speech tool, also known as a voice generator, it can convert text to audio, and you can play or download audio files. Free online text-to-speech converter supporting multiple voices, adjustable speed and pitch, with instant preview and download features.">
+    <meta name="description" content="Ciallo TTS 是一款免费的在线文本转语音工具，支持多种声音选择，可调节语速和语调，提供即时试听和下载功能。快速将文字转换成自然流畅的语音。">
     <meta name="keywords" content="文本转语音,TTS,语音合成,在线配音,OpenAI 文本转语音,OpenAI,AI,讲述人,FREE TTS,文字转语音,语音生成器,AI配音,免费TTS,在线朗读,文案工具">
     <meta name="author" content="Zwei">
     <meta name="robots" content="index, follow">
@@ -14,7 +14,7 @@
     
     <!-- Open Graph标签增强 -->
     <meta property="og:title" content="文本转语音 | 免费在线TTS转换工具 - Ciallo TTS">
-    <meta property="og:description" content="Ciallo TTS 是一款免费的在线文本转语音工具，支持多种声音选择，可调节语速和语调，提供即时试听和下载功能。快速将文字转换成自然流畅的语音。Ciallo TTS是免费的文本转语音工具，提供语音合成服务，支持多种语言，包括英语、法语、德语、西班牙语、阿拉伯语、中文、日语、朝鲜语、粤语、越南语等，以及多种语音风格，提供丰富的讲述人。Ciallo TTS is an online text-to-speech tool, also known as a voice generator, it can convert text to audio, and you can play or download audio files. Free online text-to-speech converter supporting multiple voices, adjustable speed and pitch, with instant preview and download features.">
+    <meta property="og:description" content="Ciallo TTS 是一款免费的在线文本转语音工具，支持多种声音选择，可调节语速和语调，提供即时试听和下载功能。快速将文字转换成自然流畅的语音。">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://tts.ciallo.de/">
     <meta property="og:image" content="https://tts.ciallo.de/image/TTS.png">
@@ -32,103 +32,135 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
         :root {
-            --primary-color: #4a90e2;
-            --secondary-color: #f8f9fa;
-            --accent-color: #28a745;
-            --text-color: #2c3e50;
-            --border-radius: 8px;
-            --transition-speed: 0.3s;
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #f3f4f6;
+            --accent: #10b981;
+            --text: #1f2937;
+            --text-light: #6b7280;
+            --border: #e5e7eb;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
 
         body {
-            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%);
-            color: var(--text-color);
+            background-color: #f9fafb;
+            color: var(--text);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+        }
+
+        .container-fluid {
+            padding: 2rem 1rem;
         }
 
         .card {
+            background: white;
             border: none;
-            border-radius: var(--border-radius);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+            border-radius: 1rem;
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+            overflow: hidden;
         }
 
         .card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+            box-shadow: var(--shadow-lg);
         }
 
         .card-header {
-            background: linear-gradient(135deg, var(--primary-color) 0%, #357abd 100%);
-            color: white;
-            border-radius: var(--border-radius) var(--border-radius) 0 0 !important;
-            padding: 1rem;
+            background: white;
+            border-bottom: 1px solid var(--border);
+            padding: 1.5rem;
         }
 
         .card-header h2 {
-            margin: 0;
+            color: var(--text);
             font-size: 1.5rem;
             font-weight: 600;
+            margin: 0;
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
         }
 
         .form-control {
-            border-radius: var(--border-radius);
-            border: 1px solid #dee2e6;
-            padding: 0.75rem;
-            transition: border-color var(--transition-speed), box-shadow var(--transition-speed);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            transition: all 0.2s ease;
         }
 
         .form-control:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 0.2rem rgba(74, 144, 226, 0.25);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .form-control::placeholder {
+            color: var(--text-light);
         }
 
         .btn {
-            border-radius: var(--border-radius);
+            border-radius: 0.75rem;
             padding: 0.75rem 1.5rem;
             font-weight: 500;
-            transition: all var(--transition-speed);
+            transition: all 0.2s ease;
+            border: none;
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, var(--primary-color) 0%, #357abd 100%);
-            border: none;
+            background: var(--primary);
         }
 
         .btn-primary:hover {
+            background: var(--primary-dark);
             transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(74, 144, 226, 0.3);
         }
 
         .btn-success {
-            background: linear-gradient(135deg, var(--accent-color) 0%, #218838 100%);
-            border: none;
+            background: var(--accent);
         }
 
         .btn-success:hover {
+            background: #059669;
             transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
         }
 
         .btn-info {
-            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
-            border: none;
+            background: #3b82f6;
         }
 
         .btn-info:hover {
+            background: #2563eb;
             transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(23, 162, 184, 0.3);
         }
 
         .btn-warning {
-            background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
-            border: none;
-            color: #212529;
+            background: #f59e0b;
+            color: white;
         }
 
         .btn-warning:hover {
+            background: #d97706;
             transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(255, 193, 7, 0.3);
+        }
+
+        .input-group {
+            border-radius: 0.75rem;
+            overflow: hidden;
+        }
+
+        .input-group .form-control {
+            border-radius: 0.75rem 0 0 0.75rem;
+        }
+
+        .input-group-append .btn {
+            border-radius: 0 0.75rem 0.75rem 0;
         }
 
         .form-control-range {
@@ -136,30 +168,41 @@
         }
 
         .form-control-range::-webkit-slider-thumb {
-            background: var(--primary-color);
+            background: var(--primary);
+            width: 1.25rem;
+            height: 1.25rem;
+            border-radius: 50%;
+            cursor: pointer;
+            -webkit-appearance: none;
         }
 
         .form-control-range::-moz-range-thumb {
-            background: var(--primary-color);
-        }
-
-        .alert {
-            border-radius: var(--border-radius);
+            background: var(--primary);
+            width: 1.25rem;
+            height: 1.25rem;
+            border-radius: 50%;
+            cursor: pointer;
             border: none;
         }
 
+        .alert {
+            border-radius: 0.75rem;
+            border: none;
+            padding: 1rem 1.5rem;
+        }
+
         .alert-info {
-            background: rgba(23, 162, 184, 0.1);
-            color: #138496;
+            background: rgba(59, 130, 246, 0.1);
+            color: #1d4ed8;
         }
 
         .alert-danger {
-            background: rgba(220, 53, 69, 0.1);
-            color: #dc3545;
+            background: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
         }
 
         #loading {
-            color: var(--primary-color);
+            color: var(--primary);
         }
 
         .fa-spinner {
@@ -172,33 +215,29 @@
         }
 
         .modal-content {
-            border-radius: var(--border-radius);
+            border-radius: 1rem;
             border: none;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: var(--shadow-lg);
         }
 
         .modal-header {
-            background: linear-gradient(135deg, var(--primary-color) 0%, #357abd 100%);
-            color: white;
-            border-radius: var(--border-radius) var(--border-radius) 0 0;
+            background: white;
+            border-bottom: 1px solid var(--border);
+            padding: 1.5rem;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
         }
 
         .modal-footer {
-            border-top: 1px solid rgba(0, 0, 0, 0.1);
-        }
-
-        .input-group-append .btn {
-            border-top-left-radius: 0;
-            border-bottom-left-radius: 0;
-        }
-
-        .input-group .form-control:first-child {
-            border-top-right-radius: 0;
-            border-bottom-right-radius: 0;
+            border-top: 1px solid var(--border);
+            padding: 1.5rem;
         }
 
         #result audio {
-            border-radius: var(--border-radius);
+            width: 100%;
+            border-radius: 0.75rem;
             margin-bottom: 1rem;
         }
 
@@ -206,25 +245,61 @@
             max-height: 400px;
             overflow-y: auto;
             scrollbar-width: thin;
-            scrollbar-color: var(--primary-color) var(--secondary-color);
+            scrollbar-color: var(--primary) var(--secondary);
         }
 
         .history-container::-webkit-scrollbar {
-            width: 8px;
+            width: 6px;
         }
 
         .history-container::-webkit-scrollbar-track {
-            background: var(--secondary-color);
-            border-radius: 4px;
+            background: var(--secondary);
+            border-radius: 3px;
         }
 
         .history-container::-webkit-scrollbar-thumb {
-            background: var(--primary-color);
-            border-radius: 4px;
+            background: var(--primary);
+            border-radius: 3px;
         }
 
         .history-container::-webkit-scrollbar-thumb:hover {
-            background: #357abd;
+            background: var(--primary-dark);
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .container-fluid {
+                padding: 1rem;
+            }
+            
+            .card {
+                margin-bottom: 1rem;
+            }
+            
+            .btn {
+                width: 100%;
+                margin-bottom: 0.5rem;
+            }
+        }
+
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--secondary);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-dark);
         }
     </style>
     <link rel="stylesheet" href="style.css">
