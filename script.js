@@ -1410,10 +1410,10 @@ async function generateVoiceForLongText(segments, currentRequestId, currentSpeak
     renderSegmentAudioList();
     for (let i = 0; i < segments.length; i++) {
         try {
-            const blob = await makeRequest(
-                apiUrl, 
+                const blob = await makeRequest(
+                    apiUrl, 
                 false, // 分段不预览，全部合成
-                segments[i],
+                    segments[i], 
                 `#${currentRequestId}(${i + 1}/${segments.length})`,
                 currentSpeakerId
             );
@@ -1428,7 +1428,7 @@ async function generateVoiceForLongText(segments, currentRequestId, currentSpeak
     const failedIdxs = segmentAudioStatus.map((s, i) => s==='error' ? (i+1) : null).filter(x=>x);
     if(failedIdxs.length === 0) {
         showResultModal(true, []);
-    } else {
+                } else {
         showResultModal(false, failedIdxs);
     }
     // 合成全部音频
@@ -1456,6 +1456,9 @@ function renderSegmentAudioList() {
         let playBtn = `<button class="btn btn-sm btn-primary play-btn" style="min-width:60px;" onclick="playSegmentAudio(${idx})" ${status!=='ready'?'disabled':''}><i class='fas fa-play'></i> Play</button>`;
         let batchBtn = '';
         let retryBtn = '';
+        let editBtn = `<button class="btn btn-sm btn-info" style="min-width:60px;margin-left:8px;" onclick="editSegmentText(${idx})"><i class='fas fa-edit'></i> 编辑</button>`;
+        let regenerateBtn = `<button class="btn btn-sm btn-warning" style="min-width:60px;margin-left:8px;" onclick="regenerateSegment(${idx})"><i class='fas fa-sync'></i> 重新生成</button>`;
+        
         if (status === 'ready') {
             if (isBatchPlaying && idx === currentBatchPlayIdx) {
                 batchBtn = `<button class="btn btn-sm btn-warning batch-btn" style="min-width:60px;margin-left:8px;" onclick="pauseBatchPlay()"><i class='fas fa-pause'></i> 暂停</button>`;
@@ -1465,6 +1468,8 @@ function renderSegmentAudioList() {
         } else if (status === 'loading') {
             playBtn = `<button class="btn btn-sm btn-secondary" style="min-width:60px;" disabled><i class='fas fa-spinner fa-spin'></i> 加载中</button>`;
             batchBtn = `<button class="btn btn-sm btn-secondary" style="min-width:60px;margin-left:8px;" disabled><i class='fas fa-spinner fa-spin'></i> 加载中</button>`;
+            editBtn = `<button class="btn btn-sm btn-secondary" style="min-width:60px;margin-left:8px;" disabled><i class='fas fa-edit'></i> 编辑</button>`;
+            regenerateBtn = `<button class="btn btn-sm btn-secondary" style="min-width:60px;margin-left:8px;" disabled><i class='fas fa-sync'></i> 重新生成</button>`;
         } else if (status === 'error') {
             playBtn = `<button class="btn btn-sm btn-danger" style="min-width:60px;" disabled><i class='fas fa-times-circle'></i> 失败</button>`;
             batchBtn = `<button class="btn btn-sm btn-secondary" style="min-width:60px;margin-left:8px;" disabled><i class='fas fa-forward'></i> 连播</button>`;
@@ -1478,6 +1483,8 @@ function renderSegmentAudioList() {
                 <div class="d-flex flex-row align-items-center" style="gap:8px;">
                     ${playBtn}
                     ${batchBtn}
+                    ${editBtn}
+                    ${regenerateBtn}
                     ${retryBtn}
                 </div>
             </div>
@@ -1600,6 +1607,14 @@ async function remergeAudio() {
         $('#audio').attr('src', url);
         $('#download').attr('href', url);
         $('#download').attr('download', `voice.mp3`);
+        
+        // 添加到历史记录
+        const timestamp = new Date().toLocaleTimeString();
+        const currentSpeakerText = $('#speaker option:selected').text();
+        const mergeRequestInfo = `#${requestCounter}(重新合并)`;
+        addHistoryItem(timestamp, currentSpeakerText, '重新合并的音频', finalBlob, mergeRequestInfo);
+        
+        showInfo('音频重新合并成功');
     } else {
         showError('没有可用的音频片段可合并');
     }
@@ -1644,4 +1659,93 @@ function deleteCustomApi(apiId) {
         
         showInfo(`已删除API: ${apiName}`);
     }
+}
+
+// 新增：编辑分段文本
+function editSegmentText(idx) {
+    if (!segmentAudioList[idx]) return;
+    
+    const currentText = segmentAudioList[idx].text;
+    const modalHtml = `
+        <div class="modal fade" id="editSegmentModal" tabindex="-1" role="dialog">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">编辑分段 ${idx + 1} 的文本</h5>
+                        <button type="button" class="close" data-dismiss="modal">
+                            <span>&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <textarea class="form-control" id="editSegmentText" rows="6">${currentText}</textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                        <button type="button" class="btn btn-primary" onclick="saveSegmentText(${idx})">保存</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 移除可能存在的旧模态框
+    $('#editSegmentModal').remove();
+    
+    // 添加新的模态框
+    $('body').append(modalHtml);
+    
+    // 显示模态框
+    $('#editSegmentModal').modal('show');
+}
+
+// 新增：保存分段文本
+function saveSegmentText(idx) {
+    const newText = $('#editSegmentText').val().trim();
+    if (!newText) {
+        showError('文本不能为空');
+        return;
+    }
+    
+    segmentAudioList[idx].text = newText;
+    segmentAudioStatus[idx] = 'pending';
+    $('#editSegmentModal').modal('hide');
+    renderSegmentAudioList();
+}
+
+// 新增：重新生成分段
+async function regenerateSegment(idx) {
+    if (!segmentAudioList[idx]) return;
+    
+    segmentAudioStatus[idx] = 'loading';
+    renderSegmentAudioList();
+    
+    try {
+        const apiName = $('#api').val();
+        const apiUrl = API_CONFIG[apiName].url;
+        const currentSpeakerId = $('#speaker').val();
+        const blob = await makeRequest(
+            apiUrl,
+            false,
+            segmentAudioList[idx].text,
+            '',
+            currentSpeakerId
+        );
+        segmentAudioList[idx].blob = blob;
+        segmentAudioStatus[idx] = 'ready';
+        
+        // 更新预览区，但不添加到历史记录
+        const readyBlobs = segmentAudioList.filter((item, idx) => segmentAudioStatus[idx]==='ready').map(item=>item.blob);
+        if (readyBlobs.length > 0) {
+            const finalBlob = new Blob(readyBlobs, { type: 'audio/mpeg' });
+            const url = URL.createObjectURL(finalBlob);
+            $('#audio').attr('src', url);
+            $('#download').attr('href', url);
+            $('#download').attr('download', `voice.mp3`);
+        }
+    } catch (err) {
+        segmentAudioStatus[idx] = 'error';
+        showError('重新生成失败：' + err.message);
+    }
+    
+    renderSegmentAudioList();
 }
