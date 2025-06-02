@@ -43,6 +43,18 @@
     
     <!-- Umami Analytics -->
     <script defer src="https://umami.zwei.de.eu.org/script.js" data-website-id="70106ca4-d1e5-4563-b574-ba09c3b5db16"></script>
+
+    <style>
+    /* 隐藏原生audio控件的音量按钮（兼容Chrome、Edge、Safari） */
+    audio::-webkit-media-controls-volume-slider,
+    audio::-webkit-media-controls-mute-button {
+        display: none !important;
+    }
+    /* Firefox 隐藏音量按钮 */
+    audio::-moz-media-controls-volume-control {
+        display: none !important;
+    }
+    </style>
 </head>
 <body>
     <!-- 新增顶部横幅 -->
