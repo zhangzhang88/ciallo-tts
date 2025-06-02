@@ -1453,13 +1453,17 @@ function renderSegmentAudioList() {
     const list = segmentAudioList.map((item, idx) => {
         const safeText = $('<div>').text(item.text).html();
         const status = segmentAudioStatus[idx] || 'pending';
+        
+        // Determine the class based on status
+        const cardClass = `card mb-2 shadow-sm ${status === 'playing' ? 'playing-segment-card' : ''}`;
+        
         let playBtn = `<button class="btn btn-sm btn-primary play-btn" style="min-width:60px;" onclick="playSegmentAudio(${idx})" ${status!=='ready'?'disabled':''}><i class='fas fa-play'></i> Play</button>`;
         let batchBtn = '';
         let retryBtn = '';
         let editBtn = `<button class="btn btn-sm btn-info" style="min-width:60px;margin-left:8px;" onclick="editSegmentText(${idx})"><i class='fas fa-edit'></i> 编辑</button>`;
         let regenerateBtn = `<button class="btn btn-sm btn-warning" style="min-width:60px;margin-left:8px;" onclick="regenerateSegment(${idx})"><i class='fas fa-sync'></i> 重新生成</button>`;
         
-        if (status === 'ready') {
+        if (status === 'ready' || status === 'playing') { // Also show batch button if playing
             if (isBatchPlaying && idx === currentBatchPlayIdx) {
                 batchBtn = `<button class="btn btn-sm btn-warning batch-btn" style="min-width:60px;margin-left:8px;" onclick="pauseBatchPlay()"><i class='fas fa-pause'></i> 暂停</button>`;
             } else {
@@ -1476,7 +1480,7 @@ function renderSegmentAudioList() {
             retryBtn = `<button class="btn btn-sm btn-outline-danger ml-2" style="min-width:60px;" onclick="retrySegmentAudio(${idx})"><i class='fas fa-redo'></i> 重试</button>`;
         }
         return `
-        <div class="card mb-2 shadow-sm" style="border-radius:10px;">
+        <div class="${cardClass}" style="border-radius:10px;">
             <div class="card-body d-flex align-items-center" style="padding: 12px 16px;">
                 <div style="font-size:1.2em;font-weight:bold;color:#007bff;width:36px;text-align:center;flex-shrink:0;">${idx+1}</div>
                 <div style="flex:1;padding:0 12px;word-break:break-all;">${safeText}</div>
@@ -1497,6 +1501,17 @@ function renderSegmentAudioList() {
 // 新增：播放指定分段音频
 function playSegmentAudio(idx) {
     if (!segmentAudioList[idx] || !segmentAudioList[idx].blob) return;
+    
+    // Reset background of previously playing segment if any
+    if (currentBatchPlayIdx >= 0 && segmentAudioStatus[currentBatchPlayIdx] === 'playing') {
+         segmentAudioStatus[currentBatchPlayIdx] = 'ready'; // Or its original status
+    }
+    
+    // Set status for the segment being played
+    currentBatchPlayIdx = idx; // Use currentBatchPlayIdx for single play too for consistency
+    segmentAudioStatus[idx] = 'playing';
+    renderSegmentAudioList(); // Re-render to apply style
+
     const blob = segmentAudioList[idx].blob;
     const url = URL.createObjectURL(blob);
     let audio = document.getElementById('segmentAudioPlayer');
@@ -1507,30 +1522,28 @@ function playSegmentAudio(idx) {
     }
     audio.src = url;
     audio.play();
-    audio.onended = () => URL.revokeObjectURL(url);
-}
+    
+    // Scroll to the current playing segment
+    const currentCard = document.querySelector(`#segmentAudioList .card:nth-child(${idx + 1})`);
+    if (currentCard) {
+        currentCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 
-// 新增：下载指定分段音频
-function downloadSegmentAudio(idx) {
-    if (!segmentAudioList[idx]) return;
-    const blob = segmentAudioList[idx].blob;
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `segment${idx+1}.mp3`;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-        document.body.removeChild(a);
+    audio.onended = () => {
         URL.revokeObjectURL(url);
-    }, 100);
+        // Reset status after playback ends
+        if (segmentAudioStatus[idx] === 'playing') { // Only reset if it's still playing this segment
+            segmentAudioStatus[idx] = 'ready'; // Or its original status
+        }
+        renderSegmentAudioList(); // Re-render to remove style
+    };
 }
 
 function batchPlayFrom(idx) {
     if (isBatchPlaying) return;
     isBatchPlaying = true;
     currentBatchPlayIdx = idx;
-    renderSegmentAudioList();
+    // Initial render is done inside batchPlayNext
     batchPlayNext();
 }
 
@@ -1540,23 +1553,52 @@ function pauseBatchPlay() {
     if (audio && !audio.paused) {
         audio.pause();
     }
-    renderSegmentAudioList();
+    // Reset status on pause
+    if (currentBatchPlayIdx >= 0 && segmentAudioStatus[currentBatchPlayIdx] === 'playing') {
+         segmentAudioStatus[currentBatchPlayIdx] = 'ready'; // Or its original status
+         renderSegmentAudioList(); // Re-render to remove style
+    }
+    // No need to call renderSegmentAudioList() here again, it's called after status reset
 }
 
 function batchPlayNext() {
     if (!isBatchPlaying) return;
     if (currentBatchPlayIdx >= segmentAudioList.length) {
         isBatchPlaying = false;
-        renderSegmentAudioList();
+        // Reset status of the last playing segment
+        if (currentBatchPlayIdx > 0 && segmentAudioStatus[currentBatchPlayIdx - 1] === 'playing') {
+             segmentAudioStatus[currentBatchPlayIdx - 1] = 'ready'; // Or its original status
+        }
+        renderSegmentAudioList(); // Final render after batch ends
         return;
     }
-    renderSegmentAudioList(); // 每次进入新分段时刷新按钮状态
+    
+    // Update status of previous segment
+    if (currentBatchPlayIdx > 0) {
+        if (segmentAudioStatus[currentBatchPlayIdx - 1] === 'playing') {
+             segmentAudioStatus[currentBatchPlayIdx - 1] = 'ready'; // Or its original status
+        }
+    }
+    
     if (!segmentAudioList[currentBatchPlayIdx] || !segmentAudioList[currentBatchPlayIdx].blob) {
-        // 跳过未生成的段
+        // Skip unprocessed segments
         currentBatchPlayIdx++;
         batchPlayNext();
         return;
     }
+    
+    // Update status of the current segment to 'playing'
+    segmentAudioStatus[currentBatchPlayIdx] = 'playing';
+    
+    // Re-render the list with updated statuses
+    renderSegmentAudioList(); 
+
+    // Scroll to the current playing segment after rendering
+    const currentCard = document.querySelector(`#segmentAudioList .card:nth-child(${currentBatchPlayIdx + 1})`);
+    if (currentCard) {
+        currentCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    
     const blob = segmentAudioList[currentBatchPlayIdx].blob;
     const url = URL.createObjectURL(blob);
     let audio = document.getElementById('segmentAudioPlayer');
@@ -1569,8 +1611,12 @@ function batchPlayNext() {
     audio.play();
     audio.onended = () => {
         URL.revokeObjectURL(url);
+        // Reset status after playback ends for this segment
+        if (segmentAudioStatus[currentBatchPlayIdx] === 'playing') { // Only reset if it's still playing this segment
+             segmentAudioStatus[currentBatchPlayIdx] = 'ready'; // Or its original status
+        }
         currentBatchPlayIdx++;
-        batchPlayNext();
+        batchPlayNext(); // Move to the next segment, which will trigger a re-render
     };
 }
 
